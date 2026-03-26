@@ -1,13 +1,9 @@
-/* assets/style.css - Avaria Nightfall Blueprint Theme */
-
-/* Global Settings */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
-/* Base Nightfall Background */
 .stApp {
     background-color: #0c111e !important;
     background-image: 
@@ -18,16 +14,14 @@
     padding: 20px !important;
 }
 
-/* All Text Styles - Aggressively Bold Monospace & Glowing */
 h1, h2, h3, h4, h5, h6, p, label, span, li, small {
-    color: #38bdf8 !important; /* Base Neon Blue */
-    font-weight: 900 !important; /* Ultra-Bold Terminal Style */
+    color: #38bdf8 !important;
+    font-weight: 900 !important;
     font-family: 'Consolas', 'Monaco', 'Courier New', monospace !important;
     text-shadow: 0 0 8px rgba(56, 189, 248, 0.6) !important;
     letter-spacing: -0.2px;
 }
 
-/* Application Header - Hyper-Glowing Title */
 h2 {
     text-align: center;
     background: linear-gradient(135deg, #38bdf8, #818cf8, #a855f7);
@@ -39,7 +33,6 @@ h2 {
     filter: drop-shadow(0 0 15px rgba(56, 189, 248, 0.4));
 }
 
-/* Phase Titles - Blueprint Nodes */
 h4 {
     color: #e2e8f0 !important;
     font-weight: 900 !important;
@@ -50,12 +43,12 @@ h4 {
     position: relative;
     padding-left: 20px;
 }
+
 h4::before {
     content: ">> ";
     color: #38bdf8;
 }
 
-/* Main Execution Container - Left-Aligned Nodes */
 div[data-testid="stVerticalBlock"] > div > div[data-testid="stVerticalBlock"] {
     background: rgba(15, 23, 42, 0.8) !important;
     backdrop-filter: blur(20px) !important;
@@ -64,16 +57,14 @@ div[data-testid="stVerticalBlock"] > div > div[data-testid="stVerticalBlock"] {
     padding: 20px !important;
     box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4) !important;
     margin-bottom: 25px !important;
-    /* This forces left alignment in Streamlit's structure */
     display: flex !important;
     flex-direction: column !important;
     align-items: flex-start !important;
     width: 100% !important;
-    max-width: 900px !important; /* Keeps it tight and SOLA DAYALI */
-    margin-left: 0 !important; /* Left Alignment Force */
+    max-width: 900px !important;
+    margin-left: 0 !important;
 }
 
-/* All Container Borders - Schematic Lines */
 div[data-testid="stContainer"] {
     border: 1px dashed rgba(56, 189, 248, 0.2) !important;
     border-radius: 4px !important;
@@ -82,13 +73,11 @@ div[data-testid="stContainer"] {
     width: 100% !important;
 }
 
-/* Horizontal Line - Cyber Break */
 hr {
     border-color: rgba(56, 189, 248, 0.1) !important;
     margin: 20px 0 !important;
 }
 
-/* Input Fields - Cyberpunk Console Style */
 .stTextInput > div > div > input, 
 .stSelectbox > div > div > div {
     background: rgba(10, 15, 25, 0.9) !important;
@@ -100,14 +89,12 @@ hr {
     padding: 10px !important;
 }
 
-/* Input/Select Focus - Neon Flare */
 .stTextInput > div > div > input:focus, 
 .stSelectbox > div > div > div:focus {
     border: 1px solid #38bdf8 !important;
     box-shadow: 0 0 15px rgba(56, 189, 248, 0.5) !important;
 }
 
-/* Button - The Cyber-Blueprint Trigger */
 div.stButton > button {
     background: linear-gradient(135deg, #0284c7, #4f46e5) !important;
     color: white !important;
@@ -121,19 +108,17 @@ div.stButton > button {
     box-shadow: 0 0 15px rgba(2, 132, 199, 0.5) !important;
     transition: all 0.2s ease !important;
     width: 100% !important;
-    max-width: 500px !important; /* Keeps it tight and SOLA DAYALI */
+    max-width: 500px !important; 
     display: block !important;
-    margin-left: 0 !important; /* Full force SOLA DAYALI */
+    margin-left: 0 !important; 
 }
 
-/* Button Hover - Max Glow */
 div.stButton > button:hover {
     transform: translateY(-2px) !important;
     box-shadow: 0 0 30px rgba(56, 189, 248, 0.8) !important;
     border: 1px solid rgba(255, 255, 255, 0.4) !important;
 }
 
-/* Popover & Toast notifications */
 div[data-testid="stToast"] {
     background: #1e1b4b !important;
     border: 1px solid #818cf8 !important;
@@ -141,5 +126,6 @@ div[data-testid="stToast"] {
     box-shadow: 0 0 20px rgba(129, 140, 248, 0.5) !important;
 }
 
-/* Streamlit Header Hide */
-header { visibility: hidden; }
+header { 
+    visibility: hidden; 
+}

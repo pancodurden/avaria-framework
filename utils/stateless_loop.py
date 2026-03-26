@@ -2,10 +2,6 @@ import json
 import re
 
 def robust_parse_json(raw_text):
-    """
-    Robustly parses JSON outputs from LLMs, handling structural anomalies,
-    markdown wrappings, and falling back to regex extraction if standard decoding fails.
-    """
     text = re.sub(r'```json\s*', '', raw_text)
     text = re.sub(r'```', '', text)
     
@@ -13,7 +9,6 @@ def robust_parse_json(raw_text):
         data = json.loads(text)
         expert_list = []
         
-        # Handle cases where the model wraps the array in a dictionary
         if isinstance(data, dict):
             for key, value in data.items():
                 if isinstance(value, list) and len(value) > 0 and isinstance(value[0], dict):
@@ -22,7 +17,6 @@ def robust_parse_json(raw_text):
             if isinstance(data, dict):
                 data = [data]
                 
-        # Map varying key names to standard formats
         for item in data:
             if not isinstance(item, dict): 
                 continue
@@ -34,16 +28,12 @@ def robust_parse_json(raw_text):
         return expert_list
         
     except json.JSONDecodeError:
-        # Fallback: Regex extraction for severely malformed JSON structures
         roles = re.findall(r'"(?:role|rol|unvan|title)"\s*:\s*"([^"]+)"', text, re.I)
         goals = re.findall(r'"(?:goal|amac|hedef|purpose)"\s*:\s*"([^"]+)"', text, re.I)
         backs = re.findall(r'"(?:backstory|gecmis|background)"\s*:\s*"([^"]+)"', text, re.I)
         return [{"role": r, "goal": g, "backstory": b} for r, g, b in zip(roles, goals, backs)]
 
 def safe_output(task_obj):
-    """
-    Safely extracts task output to prevent UI crashes in case of generation failures.
-    """
     if hasattr(task_obj, 'output') and task_obj.output is not None:
         return getattr(task_obj.output, 'raw', str(task_obj.output))
     return "System Warning: The model failed to generate a valid response at this stage."
