@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Avaria — Multi-Agent Research</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <header class="header">
+    <div class="header-inner">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </div>
+        <span class="brand-name">Avaria</span>
+        <span class="brand-sep"></span>
+        <span class="brand-sub">Multi-Agent Research Framework</span>
+      </div>
+
+      <nav class="stepper" id="stepNav">
+        <div class="step active" data-s="1">
+          <div class="step-dot"><span class="step-n">1</span></div>
+          <span class="step-lbl">Kurulum</span>
+        </div>
+        <div class="step-line"></div>
+        <div class="step" data-s="2">
+          <div class="step-dot"><span class="step-n">2</span></div>
+          <span class="step-lbl">Komite</span>
+        </div>
+        <div class="step-line"></div>
+        <div class="step" data-s="3">
+          <div class="step-dot"><span class="step-n">3</span></div>
+          <span class="step-lbl">Tartisma</span>
+        </div>
+        <div class="step-line"></div>
+        <div class="step" data-s="4">
+          <div class="step-dot"><span class="step-n">4</span></div>
+          <span class="step-lbl">Karar</span>
+        </div>
+      </nav>
+
+      <div class="status-pill" id="headerStatus">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">Baglaniyor</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-section">
+        <p class="sidebar-label">Oturum</p>
+        <div class="sidebar-item active" data-panel="panelSetup">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+          Kurulum
+        </div>
+        <div class="sidebar-item" data-panel="panelExperts">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Uzman Komitesi
+        </div>
+        <div class="sidebar-item" data-panel="panelDebate">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Tartışma
+        </div>
+        <div class="sidebar-item" data-panel="panelVerdict">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Nihai Karar
+        </div>
+      </div>
+
+      <div class="sidebar-section" style="margin-top:auto">
+        <p class="sidebar-label">Bilgi</p>
+        <div class="sidebar-info-row">
+          <span>Model</span>
+          <span class="sidebar-val" id="sidebarModel">—</span>
+        </div>
+        <div class="sidebar-info-row">
+          <span>Konu</span>
+          <span class="sidebar-val" id="sidebarTopic">—</span>
+        </div>
+        <div class="sidebar-info-row">
+          <span>Versiyon</span>
+          <span class="sidebar-val">v2.3</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="content">
+
+      <!-- 01 SETUP -->
+      <section class="panel" id="panelSetup">
+        <div class="page-header">
+          <div>
+            <div class="page-tag">ADIM 01</div>
+            <h1 class="page-title">Arastirma Kurulumu</h1>
+            <p class="page-desc">Konu ve model secin. Yapay zeka mimarisi uzman komitesini otomatik olusturacak.</p>
+          </div>
+        </div>
+
+        <div class="form-card">
+          <div class="form-row">
+            <div class="field">
+              <label class="label">Arastirma Konusu</label>
+              <input id="topicInput" type="text" class="input input-lg"
+                placeholder="Ornek: Yapay zeka yargiclar ve etik 2026"
+                value="Yapay zeka yargiclar ve etik 2026" />
+            </div>
+          </div>
+
+          <div class="form-row two-col">
+            <div class="field">
+              <label class="label">Mimar Model</label>
+              <div class="select-wrap">
+                <select id="archModel" class="select"><option>Yukleniyor…</option></select>
+                <svg class="select-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label">Seytan'in Avukati Modu</label>
+              <div class="toggle-card">
+                <div class="toggle-text">
+                  <span class="toggle-title">Etkinlestir</span>
+                  <span class="toggle-desc">Uzman 2 her zaman karsit pozisyonu savunur</span>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="devilAdvocate">
+                  <span class="switch-track"><span class="switch-thumb"></span></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn btn-primary" id="btnGenerate">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              Uzman Komitesini Olustur
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 02 EXPERTS -->
+      <section class="panel hidden" id="panelExperts">
+        <div class="page-header">
+          <div>
+            <div class="page-tag">ADIM 02</div>
+            <h1 class="page-title">Uzman Komitesi</h1>
+            <p class="page-desc">Her uzmana model ve kisilik profili atayin, ardından hakem kurulunu seçin.</p>
+          </div>
+        </div>
+
+        <div class="experts-grid" id="expertsGrid"></div>
+
+        <div class="divider-label">Hakem Kurulu</div>
+
+        <div class="adj-grid">
+          <div class="adj-card">
+            <div class="adj-head">
+              <div class="adj-badge badge-green">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M8 12l2 2 4-4"/></svg>
+              </div>
+              <div>
+                <div class="adj-title">Sentezleyici</div>
+                <div class="adj-sub">Tartismayi sentezler ve degerlendirme yapar</div>
+              </div>
+            </div>
+            <div class="select-wrap">
+              <select id="presidentModel" class="select"></select>
+              <svg class="select-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+          </div>
+
+          <div class="adj-card">
+            <div class="adj-head">
+              <div class="adj-badge badge-amber">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              </div>
+              <div>
+                <div class="adj-title">Yuksek Mahkeme</div>
+                <div class="adj-sub">Nihai muhurlu karari verir</div>
+              </div>
+            </div>
+            <div class="select-wrap">
+              <select id="courtModel" class="select"></select>
+              <svg class="select-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-actions" style="margin-top:1.5rem">
+          <button class="btn btn-primary" id="btnLaunch">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Sistemi Baslat
+          </button>
+          <button class="btn btn-ghost" id="btnBack">Geri</button>
+        </div>
+      </section>
+
+      <!-- 03 DEBATE -->
+      <section class="panel hidden" id="panelDebate">
+        <div class="page-header">
+          <div>
+            <div class="page-tag">ADIM 03</div>
+            <h1 class="page-title">Canli Tartisma</h1>
+            <p class="page-desc">Uzmanlar arastiriyor, arguman gelistiriyor ve birbirini elestiriyor.</p>
+          </div>
+          <div class="debate-meta">
+            <div class="meta-stat">
+              <span class="meta-val" id="progressLabel">0/6</span>
+              <span class="meta-key">Adim</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="progress-section">
+          <div class="progress-bar-wrap">
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill" id="progressFill"></div>
+            </div>
+          </div>
+          <div class="heat-wrap">
+            <span class="heat-lbl">Soguk</span>
+            <div class="heat-bar-bg">
+              <div class="heat-bar-fill" id="heatFill"></div>
+              <div class="heat-marker" id="heatMarker"></div>
+            </div>
+            <span class="heat-lbl">Gergin</span>
+          </div>
+        </div>
+
+        <div class="timeline" id="timeline"></div>
+      </section>
+
+      <!-- 04 VERDICT -->
+      <section class="panel hidden" id="panelVerdict">
+        <div class="page-header">
+          <div>
+            <div class="page-tag">ADIM 04</div>
+            <h1 class="page-title">Nihai Karar</h1>
+            <p class="page-desc">Yuksek Mahkeme'nin mühürlü karari ve tartisma sentezi.</p>
+          </div>
+          <div class="export-actions">
+            <button class="btn btn-ghost btn-sm" id="btnExportMd">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Indir
+            </button>
+            <button class="btn btn-ghost btn-sm" id="btnCopy">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Kopyala
+            </button>
+          </div>
+        </div>
+
+        <div class="result-grid">
+          <div class="result-card result-synth">
+            <div class="result-card-header">
+              <div class="result-tag tag-green">Sentezleyici</div>
+            </div>
+            <div id="synthesisText" class="result-body"></div>
+          </div>
+
+          <div class="result-card result-map">
+            <div class="result-card-header">
+              <div class="result-tag">Arguman Haritasi</div>
+            </div>
+            <svg id="argMap" class="arg-svg"></svg>
+          </div>
+        </div>
+
+        <div class="verdict-block">
+          <div class="verdict-block-header">
+            <div class="verdict-header-left">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              <span class="verdict-title-text">Nihai Karar</span>
+            </div>
+            <div class="verdict-badge">Muhurlu</div>
+          </div>
+          <div id="verdictText" class="verdict-content"></div>
+        </div>
+
+        <div class="bottom-actions">
+          <button class="btn btn-ghost" id="btnReset">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            Yeni Arastirma Baslat
+          </button>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <div class="toast-stack" id="toastContainer"></div>
+  <script src="app.js"></script>
+</body>
+</html>

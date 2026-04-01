@@ -8,7 +8,10 @@ def robust_parse_json(raw_text):
     try:
         data = json.loads(text)
         expert_list = []
-        
+
+        if not data:
+            return []
+
         if isinstance(data, dict):
             for key, value in data.items():
                 if isinstance(value, list) and len(value) > 0 and isinstance(value[0], dict):
@@ -16,7 +19,10 @@ def robust_parse_json(raw_text):
                     break
             if isinstance(data, dict):
                 data = [data]
-                
+
+        if not isinstance(data, list):
+            return []
+
         for item in data:
             if not isinstance(item, dict): 
                 continue

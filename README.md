@@ -1,8 +1,8 @@
 # ⚖️ Avaria Multi-Agent Framework
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue?style=for-the-badge&logo=python)
-![Streamlit](https://img.shields.io/badge/Streamlit-Liquid_Glass-FF4B4B?style=for-the-badge&logo=streamlit)
-![CrewAI](https://img.shields.io/badge/CrewAI-AI_Committee-orange?style=for-the-badge)
+![FastAPI](https://img.shields.io/badge/FastAPI-SSE_Streaming-009688?style=for-the-badge&logo=fastapi)
+![CrewAI](https://img.shields.io/badge/CrewAI-Multi_Agent-orange?style=for-the-badge)
 ![Ollama](https://img.shields.io/badge/Ollama-Local_LLMs-black?style=for-the-badge)
 
 🌍 **[English](#english)** | 🇹🇷 **[Türkçe](#türkçe)**
@@ -13,32 +13,79 @@
 ## 🌍 English
 
 ### What is Avaria?
-Avaria is a **CrewAI-based AI Agent Committee** framework. It creates a dynamic courtroom/debate environment where multiple local AI experts debate a given topic, critique each other, and synthesize a final verdict. 
 
-### ⚙️ Hardware & Dynamic Model Selection
-To improve the user experience and hardware flexibility, I implemented a **Dynamic Model Selection** feature. You don't need a supercomputer to run this!
-* **Hardware Flexibility:** I personally ran and tested this project on my setup (RTX 5070 Ti & AMD 7800X3D) using heavier models like `gemma2:27b` for the experts and `llama3.1:8b` for the Architect. 
-* **Ollama Integration:** If you have a lower-end or higher-end device, you can easily change the models. As long as you download a model via **Ollama**, Avaria will automatically detect it and show it in the dropdown menus!
+Avaria is a **local multi-agent debate framework** powered by CrewAI and Ollama. You give it any research topic and it assembles a full courtroom: three expert agents debate each other across 6 structured rounds, a synthesizer summarizes the arguments, and a 5-member High Security Council delivers a sealed final verdict — all running on your local machine, no API keys required.
 
-### 🚀 Installation & Usage
-1. **Install Requirements:** You need to install the necessary libraries to run the UI and the framework.
+### 🏛️ How It Works
+
+| Round | Agent | Role |
+|-------|-------|------|
+| 1 | Expert 1 | Opening thesis with web research |
+| 2 | Expert 2 | Rebuttal & counter-thesis |
+| 3 | Expert 1 | Defense & cross-examination |
+| 4 | Expert 3 (Referee) | Independent analysis |
+| 5 | Synthesizer | Comprehensive synthesis |
+| 6 | High Security Council (5 agents) | Sealed final verdict |
+
+- **Real-time web search**: DuckDuckGo results are injected into each round's prompt
+- **Live streaming**: Results stream in real-time via Server-Sent Events (SSE)
+- **Auto expert generation**: AI generates 3 domain experts from your topic automatically
+- **Devil's Advocate mode**: Force Expert 2 to always argue the opposing side
+- **Argument map**: Visual SVG graph of the debate structure
+- **Export**: Download the full debate as Markdown
+
+### ⚙️ Recommended Hardware
+
+Tested on **RTX 5070 Ti + AMD 7800X3D** with `gemma2:27b` for experts. 
+
+- **Minimum recommended**: 27B parameter model for coherent arguments
+- **Lower-end devices**: 7B/13B models work but argument quality drops significantly
+- You can mix models — lighter model for the council, heavier for experts
+
+### 🚀 Installation
+
+1. **Install dependencies**
    ```bash
-   pip install streamlit requests crewai
+   pip install -r requirements.txt
    ```
-2. **Setup Ollama:** Make sure [Ollama](https://ollama.ai/) is installed and running on your machine. Pull the models you want to use:
+
+2. **Install & start Ollama**, then pull a model
    ```bash
-   ollama pull llama3.1:latest
    ollama pull gemma2:27b
    ```
-3. **Run the App:**
+
+3. **Run the server**
    ```bash
-   streamlit run app.py
+   uvicorn server:app --host 0.0.0.0 --port 8080
    ```
 
-### 🤝 Open Source & Contributing
-I give full permission for anyone to fork, modify, change, and distribute this project. I want to see this community grow! 
+4. **Open your browser** → `http://localhost:8080`
 
-*A quick note:* I did my best with the UI, but I am not exactly a frontend wizard. If you want to touch up the UI and make it look even better, feel free to lend a hand! :)
+### 📁 Project Structure
+
+```
+avaria-framework/
+├── server.py          # FastAPI backend, debate orchestration, SSE streaming
+├── agents/
+│   ├── debaters.py    # Expert agent factory
+│   └── judge.py       # Synthesizer + 5-member Security Council
+├── services/
+│   └── llm_client.py  # Ollama LLM client
+├── utils/
+│   └── stateless_loop.py  # Robust JSON parser
+└── static/
+    ├── index.html     # Single-page app
+    ├── app.js         # Frontend logic, SSE consumer
+    └── style.css      # Woody/creamy UI theme
+```
+
+### 🤝 Contributing
+
+Fork, modify, distribute freely. PRs welcome — especially for:
+- Improved prompting strategies
+- New agent personality types
+- Better argument visualization
+- Multi-language support
 
 ---
 
@@ -46,29 +93,54 @@ I give full permission for anyone to fork, modify, change, and distribute this p
 ## 🇹🇷 Türkçe
 
 ### Avaria Nedir?
-Avaria, **CrewAI tabanlı bir Yapay Zeka Ajan Komitesi** (AI Agent Committee) projesidir. Verdiğiniz herhangi bir konuyu, farklı disiplinlerden gelen yerel yapay zeka uzmanlarının birbirleriyle tartıştığı, birbirlerini eleştirdiği ve Ana Karar Verici'nin (Başkan) nihai bir sonuca bağladığı dinamik bir mahkeme/kurul ortamı yaratır.
 
-### ⚙️ Donanım ve Dinamik Model Seçimi
-Proje üzerindeki kullanım deneyimini iyileştirmek için sisteme **Dinamik Model Seçme** özelliği sundum. 
-* **Donanım Esnekliği:** Ben bu projeyi geliştirirken kendi cihazımda (RTX 5070 Ti ekran kartı ve AMD 7800X3D işlemci) uzmanlar için `gemma2:27b`, mimar model için `llama3.1:8b` gibi ağır modeller kullandım. 
-* **Ollama Entegrasyonu:** Ancak daha kötü veya çok daha iyi bir cihaza sahip olabilirsiniz! Sadece sisteminize uygun modelleri **Ollama** üzerinden indirmeniz yeterli. Uygulama, indirdiğiniz tüm modelleri otomatik olarak algılar ve arayüzden seçmenize olanak tanır.
+Avaria, CrewAI ve Ollama üzerine kurulu **yerel çok ajanlı tartışma çerçevesidir**. Herhangi bir araştırma konusu verin — sistem otomatik olarak 3 uzman ajan oluşturur, 6 turlu yapılandırılmış bir mahkeme tartışması yürütür ve 5 üyeli Yüksek Güvenlik Konseyi mühürlü nihai kararı verir. API anahtarı gerekmez, her şey yerel çalışır.
 
-###  Kurulum ve Kullanım
-1. **Kütüphaneleri İndirin:** Arayüz ve yapay zeka altyapısı için gerekli kütüphaneleri kurun.
+### 🏛️ Tartışma Yapısı
+
+| Tur | Ajan | Görev |
+|-----|------|-------|
+| 1 | Uzman 1 | Web araştırmalı açılış tezi |
+| 2 | Uzman 2 | İtiraz ve karşı tez |
+| 3 | Uzman 1 | Savunma ve çapraz sorgu |
+| 4 | Uzman 3 (Hakem) | Bağımsız analiz |
+| 5 | Sentezleyici | Kapsamlı sentez |
+| 6 | Yüksek Güvenlik Konseyi (5 ajan) | Mühürlü nihai karar |
+
+- **Gerçek zamanlı web araması**: Her turda DuckDuckGo sonuçları prompt'a enjekte edilir
+- **Canlı akış**: Sonuçlar SSE (Server-Sent Events) ile gerçek zamanlı akar
+- **Otomatik uzman üretimi**: Konudan 3 alan uzmanı otomatik oluşturulur
+- **Şeytan'ın Avukatı modu**: Uzman 2'yi her zaman karşı pozisyonu savunmaya zorlar
+- **Argüman haritası**: Tartışma yapısının görsel SVG grafiği
+- **Dışa aktarma**: Tartışmayı Markdown olarak indirin
+
+### ⚙️ Önerilen Donanım
+
+**RTX 5070 Ti + AMD 7800X3D** üzerinde `gemma2:27b` ile test edildi.
+
+- **Önerilen minimum**: Tutarlı argümanlar için 27B parametre model
+- **Düşük donanım**: 7B/13B modeller çalışır ama argüman kalitesi düşer
+- Modelleri karıştırabilirsiniz — konsey için hafif, uzmanlar için ağır model
+
+### 🚀 Kurulum
+
+1. **Bağımlılıkları yükleyin**
    ```bash
-   pip install streamlit requests crewai
+   pip install -r requirements.txt
    ```
-2. **Ollama'yı Hazırlayın:** Bilgisayarınızda [Ollama](https://ollama.ai/)'nın kurulu ve açık olduğundan emin olun. Kullanmak istediğiniz modelleri indirin:
+
+2. **Ollama'yı kurun ve model indirin**
    ```bash
-   ollama pull llama3.1:latest
    ollama pull gemma2:27b
    ```
-3. **Uygulamayı Başlatın:**
+
+3. **Sunucuyu başlatın**
    ```bash
-   streamlit run app.py
+   uvicorn server:app --host 0.0.0.0 --port 8080
    ```
 
-### 🤝 Açık Kaynak ve Topluluk Katkısı
-Bu projenin isteyen herkes tarafından değiştirilmesine, modifiye edilmesine ve topluluğun geliştirmesine sonuna kadar izin veriyorum. İstediğiniz gibi çatallayabilir (fork) ve kullanabilirsiniz!
+4. **Tarayıcıda açın** → `http://localhost:8080`
 
-*Küçük bir note:* UI (Arayüz) tarafını pek yapamadım, elimden bu kadarı geldi. İsteyen ve anlayan arkadaşlar frontend/UI tarafına el atabilir, PR (Pull Request) gönderebilirsiniz! :)
+### 🤝 Katkı
+
+Forklayın, değiştirin, dağıtın — tamamen serbesttir. PR'lar memnuniyetle karşılanır.

@@ -1,16 +1,23 @@
 from crewai import Agent
-from utils.tools import safe_web_search
 
-def create_expert_agent(agent_data, llm_engine):
-    hedef = agent_data.get('goal', 'Analiz yapmak.') + " Gerektiğinde en doğru veriyi bulmak için internette araştırma yap."
-    hikaye = agent_data.get('backstory', 'Uzman.') + " Asla halüsinasyon görmezsin. Emin olmadığın her bilgiyi 'search_internet' aracıyla doğrularsın."
+PERSONALITIES = {
+    "akademik": "Akademik ve nesnel bir üslup kullan. Her iddiayı kaynaklarla destekle. Metodolojik ve sistematik yaklaş.",
+    "sinik": "Sinik ve şüpheci bir tutum sergile. İddiaları sorgula, iyimser varsayımları çürüt. Her şeyin arka planını araştır.",
+    "iyimser": "Yapıcı ve çözüm odaklı yaklaş. Fırsatlara ve olumlu senaryolara odaklan. Uzlaşı arayan bir tavır takın.",
+    "sert": "Sert ve doğrudan bir üslup kullan. Taviz verme, karşı argümanları agresif olarak çürüt. Keskin ve iddialı ol.",
+    "pragmatik": "Pratik ve sonuç odaklı düşün. Teorik tartışmalar yerine uygulanabilir çözümler sun. Gerçekçi ol.",
+}
 
+def create_expert_agent(agent_data, llm_engine, personality="akademik"):
+    p_note = PERSONALITIES.get(personality, PERSONALITIES["akademik"])
+    hedef = agent_data.get('goal', 'Analiz yapmak.') + f" {p_note}"
+    hikaye = agent_data.get('backstory', 'Uzman.') + " Verilen araştırma verilerini kullanarak güçlü, kanıta dayalı argümanlar üretirsin."
     return Agent(
         role=agent_data.get('role', 'Uzman Araştırmacı'),
         goal=hedef,
         backstory=hikaye,
         verbose=True,
         allow_delegation=False,
-        tools=[safe_web_search],
+        tools=[],
         llm=llm_engine
     )
