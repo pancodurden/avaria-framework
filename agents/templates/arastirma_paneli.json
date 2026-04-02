@@ -1,0 +1,27 @@
+{
+  "name": "arastirma_paneli",
+  "display_name": "Araştırma Paneli",
+  "description": "Bilimsel araştırma, literatür taraması ve akademik değerlendirme. 3 araştırmacı farklı perspektiflerden konuyu inceler.",
+  "icon": "microscope",
+  "trigger_keywords": ["araştır", "bilim", "deney", "teori", "hipotez", "veri", "istatistik", "makale", "literatür", "akademik", "üniversite", "çalışma", "kanıt", "bulgu"],
+  "agent_count": 3,
+  "flow": ["literatur", "analiz", "elestiri", "hakem", "sentez", "nihai_karar"],
+  "roles": [
+    {
+      "title": "Birincil Araştırmacı",
+      "description": "Konunun mevcut literatürünü ve temel bulgularını sunar",
+      "default_personality": "akademik"
+    },
+    {
+      "title": "Metodoloji Uzmanı",
+      "description": "Araştırma yöntemlerini ve veri kalitesini değerlendirir",
+      "default_personality": "sinik"
+    },
+    {
+      "title": "Disiplinlerarası Analist",
+      "description": "Farklı disiplinlerden perspektifler sunarak konuyu zenginleştirir",
+      "default_personality": "iyimser"
+    }
+  ],
+  "generate_prompt": "'{topic}' konusu için bir akademik araştırma paneli oluştur.\n\nSADECE geçerli bir JSON dizisi döndür. Her nesne şu anahtarları içermeli:\n- \"role\": araştırmacının uzmanlık alanı (Türkçe)\n- \"goal\": bu araştırmada neyi ortaya koymak istediği (1 Türkçe cümle)\n- \"backstory\": akademik geçmişi (1 Türkçe cümle)\n\n1. Birincil araştırmacı (konunun ana uzmanı)\n2. Metodoloji ve veri analizi uzmanı\n3. Disiplinlerarası perspektif sunan analist"
+}

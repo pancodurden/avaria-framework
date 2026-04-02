@@ -19,11 +19,16 @@ from ddgs import DDGS
 
 from services.llm_client import get_ollama_models, create_llm
 from utils.stateless_loop import robust_parse_json
+from utils.hardware_analyzer import analyze_hardware
+from utils.intent_analyzer import analyze_intent, load_templates, get_template_by_name
 from agents.debaters import create_expert_agent
 from agents.judge import create_judge_agent, create_security_council
+from utils.tools import AGENT_TOOLS
 from crewai import Task, Crew
 
 app = FastAPI(title="Avaria Multi-Agent Framework")
+
+OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 
 
 def extract_search_terms(topic: str) -> str:
@@ -81,9 +86,28 @@ def web_search(query: str, max_results: int = 4, topic_keywords: list = None) ->
 debate_sessions: dict[str, queue.Queue] = {}
 
 
+class IntentRequest(BaseModel):
+    topic: str
+    model: str = ""
+
+
+class TemplateImportRequest(BaseModel):
+    url: str = ""
+    template_data: dict = {}
+
+
+class CustomTemplateRequest(BaseModel):
+    name: str
+    display_name: str
+    description: str = ""
+    roles: list[dict] = []
+    trigger_keywords: list[str] = []
+
+
 class ExpertRequest(BaseModel):
     model: str
     topic: str
+    template: str = "mahkeme"
 
 
 class AgentConfig(BaseModel):
@@ -98,6 +122,198 @@ class DebateRequest(BaseModel):
     president_model: str
     court_model: str
     devil_advocate: bool = False
+    template: str = "mahkeme"
+
+
+@app.get("/api/hardware")
+def get_hardware():
+    """Donanım bilgilerini ve model önerilerini döndürür."""
+    try:
+        return analyze_hardware()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Donanım analizi başarısız: {e}")
+
+
+@app.get("/api/templates")
+def get_templates():
+    """Mevcut tüm tartışma şablonlarını döndürür."""
+    templates = load_templates()
+    return {"templates": [
+        {
+            "name": t["name"],
+            "display_name": t.get("display_name", t["name"]),
+            "description": t.get("description", ""),
+            "icon": t.get("icon", ""),
+            "agent_count": t.get("agent_count", 3),
+            "roles": t.get("roles", [])
+        }
+        for t in templates
+    ]}
+
+
+@app.post("/api/analyze-intent")
+def api_analyze_intent(req: IntentRequest):
+    """Konuyu analiz edip en uygun şablonu önerir."""
+    result = analyze_intent(req.topic, req.model if req.model else None)
+    return result
+
+
+MEMORY_PATH = "avaria_memory.json"
+COMMUNITY_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "agents", "community_templates")
+os.makedirs(COMMUNITY_DIR, exist_ok=True)
+
+
+# ── Faz 4: Oturum Geçmişi + Export ─────────────────────────────────
+
+@app.get("/api/history")
+def get_history():
+    """Geçmiş oturumları döndürür."""
+    try:
+        with open(MEMORY_PATH, "r", encoding="utf-8") as f:
+            history = json.load(f)
+        if not isinstance(history, list):
+            history = [history]
+    except (FileNotFoundError, json.JSONDecodeError):
+        history = []
+    # Her oturuma index-based ID ekle, kısa özet döndür
+    summaries = []
+    for i, session in enumerate(history):
+        summaries.append({
+            "id": i,
+            "tarih": session.get("tarih", ""),
+            "konu": session.get("konu", ""),
+            "ozet": (session.get("muhurlu_karar", "") or "")[:100]
+        })
+    return {"history": list(reversed(summaries))}  # en yeni üstte
+
+
+@app.get("/api/history/{session_id}")
+def get_session_detail(session_id: int):
+    """Tek oturumun detayını döndürür."""
+    try:
+        with open(MEMORY_PATH, "r", encoding="utf-8") as f:
+            history = json.load(f)
+        if not isinstance(history, list):
+            history = [history]
+    except (FileNotFoundError, json.JSONDecodeError):
+        raise HTTPException(status_code=404, detail="Geçmiş bulunamadı.")
+    if session_id < 0 or session_id >= len(history):
+        raise HTTPException(status_code=404, detail="Oturum bulunamadı.")
+    return history[session_id]
+
+
+@app.get("/api/export/{session_id}")
+def export_session(session_id: int):
+    """Oturumu Markdown formatında döndürür."""
+    try:
+        with open(MEMORY_PATH, "r", encoding="utf-8") as f:
+            history = json.load(f)
+        if not isinstance(history, list):
+            history = [history]
+    except (FileNotFoundError, json.JSONDecodeError):
+        raise HTTPException(status_code=404, detail="Geçmiş bulunamadı.")
+    if session_id < 0 or session_id >= len(history):
+        raise HTTPException(status_code=404, detail="Oturum bulunamadı.")
+
+    s = history[session_id]
+    md = f"# AVARIA — Araştırma Raporu\n\n"
+    md += f"**Konu:** {s.get('konu', '')}\n"
+    md += f"**Tarih:** {s.get('tarih', '')}\n\n---\n\n"
+    md += f"## 1. Açılış Tezi\n\n{s.get('agent_1_tez', '')}\n\n---\n\n"
+    md += f"## 2. İtiraz & Karşı Tez\n\n{s.get('agent_2_itiraz', '')}\n\n---\n\n"
+    md += f"## 3. Savunma\n\n{s.get('agent_1_savunma', '')}\n\n---\n\n"
+    md += f"## 4. Bağımsız Hakem\n\n{s.get('agent_3_hakem', '')}\n\n---\n\n"
+    md += f"## 5. Sentez\n\n{s.get('sentez', '')}\n\n---\n\n"
+    md += f"## 6. Nihai Karar\n\n{s.get('muhurlu_karar', '')}\n"
+
+    from fastapi.responses import Response
+    return Response(
+        content=md,
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": f"attachment; filename=avaria_oturum_{session_id}.md"}
+    )
+
+
+# ── Faz 5: Plugin Ekosistemi ───────────────────────────────────────
+
+@app.post("/api/templates/create")
+def create_custom_template(req: CustomTemplateRequest):
+    """Kullanıcının UI'dan oluşturduğu şablonu kaydeder."""
+    # İsim doğrulama
+    safe_name = "".join(c for c in req.name if c.isalnum() or c == "_").lower()
+    if not safe_name:
+        raise HTTPException(status_code=400, detail="Geçersiz şablon adı.")
+
+    template = {
+        "name": safe_name,
+        "display_name": req.display_name,
+        "description": req.description,
+        "icon": "custom",
+        "trigger_keywords": req.trigger_keywords,
+        "agent_count": len(req.roles) if req.roles else 3,
+        "flow": ["tez", "itiraz", "savunma", "hakem", "sentez", "nihai_karar"],
+        "roles": req.roles or [
+            {"title": f"Uzman {i+1}", "description": "", "default_personality": "akademik"}
+            for i in range(3)
+        ],
+        "generate_prompt": f"'{{topic}}' konusu için {req.display_name} tartışması yapacak "
+                          f"{len(req.roles) if req.roles else 3} uzman profili oluştur.\n\n"
+                          "SADECE geçerli bir JSON dizisi döndür. Her nesne şu anahtarları içermeli:\n"
+                          '- "role": uzmanın rolü (Türkçe)\n'
+                          '- "goal": hedefi (1 Türkçe cümle)\n'
+                          '- "backstory": geçmişi (1 Türkçe cümle)\n\n'
+                          "SADECE JSON dizisini döndür."
+    }
+
+    fpath = os.path.join(COMMUNITY_DIR, f"{safe_name}.json")
+    with open(fpath, "w", encoding="utf-8") as f:
+        json.dump(template, f, indent=2, ensure_ascii=False)
+
+    return {"status": "ok", "name": safe_name, "path": fpath}
+
+
+@app.post("/api/templates/import")
+def import_template(req: TemplateImportRequest):
+    """GitHub raw URL'den veya doğrudan JSON'dan şablon import eder."""
+    template = {}
+
+    if req.url:
+        try:
+            resp = requests.get(req.url, timeout=15)
+            resp.raise_for_status()
+            template = resp.json()
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"URL'den şablon indirilemedi: {e}")
+    elif req.template_data:
+        template = req.template_data
+    else:
+        raise HTTPException(status_code=400, detail="URL veya template_data gerekli.")
+
+    # Doğrulama
+    if not isinstance(template, dict) or "name" not in template:
+        raise HTTPException(status_code=400, detail="Geçersiz şablon formatı. 'name' alanı gerekli.")
+
+    safe_name = "".join(c for c in template["name"] if c.isalnum() or c == "_").lower()
+    if not safe_name:
+        raise HTTPException(status_code=400, detail="Geçersiz şablon adı.")
+
+    template["name"] = safe_name
+    fpath = os.path.join(COMMUNITY_DIR, f"{safe_name}.json")
+    with open(fpath, "w", encoding="utf-8") as f:
+        json.dump(template, f, indent=2, ensure_ascii=False)
+
+    return {"status": "ok", "name": safe_name, "display_name": template.get("display_name", safe_name)}
+
+
+@app.delete("/api/templates/{name}")
+def delete_template(name: str):
+    """Community şablonunu siler. Varsayılan şablonlar silinemez."""
+    safe_name = "".join(c for c in name if c.isalnum() or c == "_").lower()
+    fpath = os.path.join(COMMUNITY_DIR, f"{safe_name}.json")
+    if not os.path.exists(fpath):
+        raise HTTPException(status_code=404, detail="Şablon bulunamadı veya varsayılan şablondur.")
+    os.remove(fpath)
+    return {"status": "ok", "deleted": safe_name}
 
 
 @app.get("/api/models")
@@ -110,7 +326,20 @@ def get_models():
 
 @app.post("/api/generate-experts")
 def generate_experts(req: ExpertRequest):
-    prompt = f"""'{req.topic}' konusu için tartışacak 3 akademik uzman profili oluştur.
+    # Şablondan özel prompt al, yoksa varsayılan kullan
+    template = get_template_by_name(req.template)
+    if template and template.get("generate_prompt"):
+        prompt = template["generate_prompt"].replace("{topic}", req.topic)
+        prompt += f"""
+
+Örnek format:
+[
+  {{"role": "Uzman Rolü", "goal": "Hedef cümlesi", "backstory": "Geçmiş cümlesi"}}
+]
+
+SADECE JSON dizisini döndür, başka hiçbir şey ekleme."""
+    else:
+        prompt = f"""'{req.topic}' konusu için tartışacak 3 akademik uzman profili oluştur.
 
 SADECE geçerli bir JSON dizisi döndür. Her nesne şu anahtarları içermeli:
 - "role": uzman unvanı ve alanı (Türkçe, ör. "Yapay Zeka Etiği Profesörü")
@@ -129,7 +358,7 @@ SADECE JSON dizisini döndür, başka hiçbir şey ekleme."""
 
     try:
         response = requests.post(
-            "http://localhost:11434/api/generate",
+            f"{OLLAMA_HOST}/api/generate",
             json={"model": req.model, "prompt": prompt, "stream": False},
             timeout=120
         )
@@ -146,6 +375,76 @@ SADECE JSON dizisini döndür, başka hiçbir şey ekleme."""
         return {"experts": experts[:3]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+def _extract_code_blocks(text: str) -> list[str]:
+    """Metinden ```python ... ``` veya ```...``` kod bloklarını çıkarır."""
+    import re
+    pattern = r'```(?:python)?\s*\n(.*?)```'
+    return re.findall(pattern, text, re.DOTALL)
+
+
+def _code_feedback_loop(agent_output: str, agent, q: queue.Queue, step_label: str, max_retries: int = 3) -> str:
+    """Yazılım ekibi modunda: ajan kod ürettiyse çalıştır, hata varsa geri besle."""
+    code_blocks = _extract_code_blocks(agent_output)
+    if not code_blocks:
+        return agent_output
+
+    from utils.tools import kod_calistir
+
+    for i, code in enumerate(code_blocks):
+        q.put({"type": "tool_call", "tool": "kod_calistir", "agent": step_label,
+               "detail": f"Kod bloğu {i+1}/{len(code_blocks)} çalıştırılıyor..."})
+
+        result = kod_calistir.run(code)
+        q.put({"type": "tool_result", "tool": "kod_calistir", "result": result[:500]})
+
+        # Hata varsa feedback loop
+        if "HATA:" in result or "Error" in result or "Traceback" in result:
+            attempt = 0
+            current_code = code
+            while attempt < max_retries:
+                attempt += 1
+                q.put({"type": "tool_call", "tool": "kod_calistir",
+                       "agent": step_label,
+                       "detail": f"Hata tespit edildi. Düzeltme denemesi {attempt}/{max_retries}..."})
+
+                fix_result = getattr(
+                    Crew(agents=[agent], tasks=[Task(
+                        description=f"""Aşağıdaki Python kodu çalıştırıldığında hata aldı. Düzelt.
+
+KOD:
+```python
+{current_code}
+```
+
+HATA:
+{result}
+
+GÖREV: Hatayı düzelt ve SADECE düzeltilmiş kodu ```python ... ``` bloğu içinde döndür.""",
+                        agent=agent,
+                        expected_output="Düzeltilmiş Python kodu."
+                    )]).kickoff(), "raw", "")
+
+                fixed_blocks = _extract_code_blocks(fix_result)
+                if not fixed_blocks:
+                    q.put({"type": "tool_result", "tool": "kod_calistir",
+                           "result": f"Düzeltme {attempt}: Kod bloğu çıkarılamadı."})
+                    break
+
+                current_code = fixed_blocks[0]
+                result = kod_calistir.run(current_code)
+                q.put({"type": "tool_result", "tool": "kod_calistir", "result": result[:500]})
+
+                if "HATA:" not in result and "Error" not in result and "Traceback" not in result:
+                    q.put({"type": "log", "message": f"Kod düzeltildi (deneme {attempt})."})
+                    break
+            else:
+                q.put({"type": "log", "message": f"Kod {max_retries} denemede düzeltilemedi."})
+        else:
+            q.put({"type": "log", "message": "Kod başarıyla çalıştı."})
+
+    return agent_output
 
 
 def heat_score(text: str) -> int:
@@ -187,7 +486,9 @@ async def start_debate(req: DebateRequest):
             roles = [c.data.get('role', f'Uzman {i+1}') for i, c in enumerate(configs)]
             goals = [c.data.get('goal', '') for c in configs]
 
-            q.put({"type": "log", "message": "Mahkeme oturumu başlatılıyor..."})
+            is_dev_mode = req.template == "yazilim_ekibi"
+            mode_label = "Yazılım ekibi" if is_dev_mode else "Mahkeme"
+            q.put({"type": "log", "message": f"{mode_label} oturumu başlatılıyor..."})
 
             llm1 = create_llm(configs[0].model)
             llm2 = create_llm(configs[1].model)
@@ -195,9 +496,11 @@ async def start_debate(req: DebateRequest):
             llm_p = create_llm(req.president_model, temp=0.1)
             llm_c = create_llm(req.court_model, temp=0.0)
 
-            agent1 = create_expert_agent(configs[0].data, llm1, configs[0].personality)
-            agent2 = create_expert_agent(configs[1].data, llm2, configs[1].personality)
-            agent3 = create_expert_agent(configs[2].data, llm3, configs[2].personality)
+            # Yazılım ekibi modunda ajanlar tool kullanabilir
+            expert_tools = AGENT_TOOLS if is_dev_mode else []
+            agent1 = create_expert_agent(configs[0].data, llm1, configs[0].personality, tools=expert_tools)
+            agent2 = create_expert_agent(configs[1].data, llm2, configs[1].personality, tools=expert_tools)
+            agent3 = create_expert_agent(configs[2].data, llm3, configs[2].personality, tools=expert_tools)
             president = create_judge_agent(llm_p)
             council = create_security_council(llm_c)
 
@@ -226,6 +529,10 @@ Mahkeme üslubuyla yaz: ciddi, akademik, iddialı.""",
                 expected_output="Kanıta dayalı açılış tezi. Türkçe. 400-600 kelime."
             ))
             q.put({"type": "step_complete", "step": 1, "content": r1, "heat": heat_score(r1)})
+
+            # ── Yazılım Ekibi: Kod Feedback Loop ─────────────────────────
+            if is_dev_mode:
+                r1 = _code_feedback_loop(r1, agent1, q, step_label=f"{roles[0]}")
 
             # ── OTURUM 2: İtiraz ve Karşı Tez ──────────────────────────────
             q.put({"type": "step_start", "step": 2, "title": f"{roles[1]} — İtiraz & Karşı Tez"})
@@ -260,6 +567,9 @@ Keskin, iddialı ve tavizsiz yaz. Rakibini savunmaya çek.""",
             ))
             q.put({"type": "step_complete", "step": 2, "content": r2, "heat": heat_score(r2)})
 
+            if is_dev_mode:
+                r2 = _code_feedback_loop(r2, agent2, q, step_label=f"{roles[1]}")
+
             # ── OTURUM 3: Savunma ve Çapraz Sorgu ──────────────────────────
             q.put({"type": "step_start", "step": 3, "title": f"{roles[0]} — Savunma & Çapraz Sorgu"})
             q.put({"type": "log", "message": "Savunma için ek araştırma yapılıyor..."})
@@ -293,6 +603,9 @@ Savunman güçlü, tutarlı ve orijinal pozisyonuna sadık olsun. Türkçe yaz."
                 expected_output="Güçlü savunma ve çapraz sorgu yanıtı. Türkçe. 400-600 kelime."
             ))
             q.put({"type": "step_complete", "step": 3, "content": r3, "heat": heat_score(r3)})
+
+            if is_dev_mode:
+                r3 = _code_feedback_loop(r3, agent1, q, step_label=f"{roles[0]}")
 
             # ── OTURUM 4: Bağımsız Hakem Değerlendirmesi ───────────────────
             q.put({"type": "step_start", "step": 4, "title": f"{roles[2]} — Bağımsız Hakem Analizi"})

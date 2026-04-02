@@ -4,3 +4,4 @@ crewai
 requests
 ddgs
 pydantic
+psutil

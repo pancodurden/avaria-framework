@@ -1,6 +1,7 @@
 /* ── API endpoints ── */
 const API = {
   models:     '/api/models',
+  hardware:   '/api/hardware',
   genExperts: '/api/generate-experts',
   startDebate:'/api/start-debate',
   stream: id =>`/api/debate-stream/${id}`
@@ -32,10 +33,13 @@ const PERSONALITY_LABELS = {
 /* ── State ── */
 let models         = [];
 let experts        = [];
+let templates      = [];
+let selectedTemplate = 'mahkeme';
 let stepElements   = {};
 let completedSteps = 0;
 let es             = null;
 let debateRoles    = [];
+let intentTimeout  = null;
 
 /* ── DOM helper ── */
 const $ = id => document.getElementById(id);
@@ -118,7 +122,109 @@ document.querySelectorAll('.sidebar-item[data-panel]').forEach(item => {
   });
 });
 
-/* ── Init: fetch models ── */
+/* ── Hardware banner ── */
+async function fetchHardware() {
+  try {
+    const res = await fetch(API.hardware);
+    if (!res.ok) return;
+    const hw = await res.json();
+
+    const banner = $('hwBanner');
+    if (!banner) return;
+    banner.classList.remove('hidden');
+
+    let title = '';
+    if (hw.gpu.available) {
+      title = `${hw.gpu.name} \u00b7 ${hw.gpu.vram_gb} GB VRAM`;
+    } else {
+      title = `CPU Modu \u00b7 GPU tespit edilemedi`;
+    }
+    title += ` \u00b7 ${hw.ram.total_gb} GB RAM`;
+    $('hwTitle').textContent = title;
+
+    const detail = $('hwDetail');
+    if (hw.pull_required && hw.models_to_pull.length > 0) {
+      detail.textContent = `Onerilen: ${hw.models_to_pull.join(', ')} (yuklenmemis)`;
+      detail.classList.add('hw-warn');
+    } else if (hw.ready_models.length > 0) {
+      detail.textContent = `Hazir: ${hw.ready_models.join(', ')}`;
+    }
+
+    const modelsEl = $('hwModels');
+    if (hw.recommended_models.length > 0) {
+      modelsEl.innerHTML = hw.recommended_models.map(m => {
+        const ready = hw.installed_models.includes(m);
+        return `<span class="hw-model-tag ${ready ? 'hw-ready' : 'hw-missing'}">${esc(m)}</span>`;
+      }).join('');
+    }
+  } catch {
+    /* Hardware endpoint opsiyonel — hata olursa sessizce geç */
+  }
+}
+
+/* ── Fetch templates ── */
+async function fetchTemplates() {
+  try {
+    const res = await fetch('/api/templates');
+    if (!res.ok) return;
+    const data = await res.json();
+    templates = data.templates || [];
+
+    const sel = $('templateSelect');
+    if (sel && templates.length > 0) {
+      sel.innerHTML = templates.map(t =>
+        `<option value="${esc(t.name)}">${esc(t.display_name)}</option>`
+      ).join('');
+    }
+  } catch { /* sessizce geç */ }
+}
+
+/* ── Analyze intent (debounced) ── */
+function scheduleIntentAnalysis() {
+  if (intentTimeout) clearTimeout(intentTimeout);
+  intentTimeout = setTimeout(analyzeIntent, 800);
+}
+
+async function analyzeIntent() {
+  const topic = $('topicInput').value.trim();
+  if (topic.length < 5) {
+    $('modeCard')?.classList.add('hidden');
+    return;
+  }
+
+  try {
+    const model = $('archModel')?.value || '';
+    const res = await fetch('/api/analyze-intent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic, model })
+    });
+    if (!res.ok) return;
+    const result = await res.json();
+
+    const card = $('modeCard');
+    if (!card) return;
+    card.classList.remove('hidden');
+
+    $('modeName').textContent = result.display_name || result.template;
+
+    const conf = $('modeConfidence');
+    if (conf) {
+      const labels = { high: 'Yuksek', medium: 'Orta', low: 'Dusuk' };
+      conf.textContent = labels[result.confidence] || '';
+      conf.className = 'mode-card-confidence conf-' + (result.confidence || 'low');
+    }
+
+    /* Dropdown'u da otomatik seç */
+    const sel = $('templateSelect');
+    if (sel) {
+      sel.value = result.template;
+      selectedTemplate = result.template;
+    }
+  } catch { /* sessizce geç */ }
+}
+
+/* ── Init: fetch models + hardware ── */
 document.addEventListener('DOMContentLoaded', async () => {
   try {
     const res  = await fetch(API.models);
@@ -136,6 +242,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     setStatus('error', 'Ollama baglantisi yok');
     toast('Ollama servisine ulasilamadi. localhost:11434 calisiyor mu?', 'error');
   }
+
+  /* Donanim tespiti ve sablonlar (paralel, bloklayici degil) */
+  fetchHardware();
+  fetchTemplates();
+
+  /* Konu degistiginde intent analizi */
+  $('topicInput')?.addEventListener('input', scheduleIntentAnalysis);
+
+  /* Template dropdown degistiginde */
+  $('templateSelect')?.addEventListener('change', (e) => {
+    selectedTemplate = e.target.value;
+  });
 });
 
 /* ── Generate experts ── */
@@ -149,10 +267,12 @@ $('btnGenerate').addEventListener('click', async () => {
   btn.innerHTML = '<div class="spin"></div> Olusturuluyor…';
 
   try {
+    const template = $('templateSelect')?.value || 'mahkeme';
+    selectedTemplate = template;
     const res  = await fetch(API.genExperts, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model, topic })
+      body: JSON.stringify({ model, topic, template })
     });
     if (!res.ok) throw new Error((await res.json()).detail || 'Sunucu hatasi');
     const data = await res.json();
@@ -251,7 +371,8 @@ $('btnLaunch').addEventListener('click', async () => {
         expert_configs:  expertConfigs,
         president_model: $('presidentModel').value,
         court_model:     $('courtModel').value,
-        devil_advocate:  devilAdvocate
+        devil_advocate:  devilAdvocate,
+        template:        selectedTemplate
       })
     });
     if (!res.ok) throw new Error((await res.json()).detail || 'Sunucu hatasi');
@@ -386,6 +507,44 @@ function handleEvent(ev) {
     const btn = $('btnLaunch');
     btn.disabled = false;
     btn.innerHTML = BTN_LAUNCH_HTML;
+    return;
+  }
+
+  if (ev.type === 'tool_call') {
+    const tl = $('timeline');
+    const el = document.createElement('div');
+    el.className = 'tl-tool-event';
+    el.innerHTML = `
+      <div class="tool-icon">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+      </div>
+      <div class="tool-info">
+        <span class="tool-name">${esc(ev.tool || '')}</span>
+        <span class="tool-detail">${esc(ev.detail || '')}</span>
+      </div>
+      <div class="tl-loader"><span></span><span></span><span></span></div>
+    `;
+    tl.appendChild(el);
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    return;
+  }
+
+  if (ev.type === 'tool_result') {
+    const tl = $('timeline');
+    const el = document.createElement('div');
+    el.className = 'tl-tool-result';
+    const isError = (ev.result || '').includes('HATA:') || (ev.result || '').includes('Error');
+    el.innerHTML = `
+      <div class="tool-result-icon ${isError ? 'tool-err' : 'tool-ok'}">
+        ${isError
+          ? '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
+          : '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>'
+        }
+      </div>
+      <pre class="tool-result-text">${esc(ev.result || '')}</pre>
+    `;
+    tl.appendChild(el);
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     return;
   }
 
@@ -634,3 +793,190 @@ $('btnReset').addEventListener('click', () => {
   btn.disabled = false;
   btn.innerHTML = BTN_LAUNCH_HTML;
 });
+
+
+/* ═══════════════════════════════════════════════════════════
+   FAZ 4: Oturum Gecmisi
+═══════════════════════════════════════════════════════════ */
+let currentHistoryId = null;
+
+async function loadHistory() {
+  try {
+    const res = await fetch('/api/history');
+    if (!res.ok) return;
+    const data = await res.json();
+    const list = $('historyList');
+    if (!list) return;
+
+    if (!data.history || data.history.length === 0) {
+      list.innerHTML = '<span class="sidebar-empty">Henuz oturum yok</span>';
+      return;
+    }
+
+    list.innerHTML = data.history.slice(0, 15).map(h => {
+      const date = h.tarih ? new Date(h.tarih).toLocaleDateString('tr-TR') : '';
+      const topic = (h.konu || '').length > 28 ? h.konu.slice(0, 28) + '...' : (h.konu || '');
+      return `<div class="history-item" data-hid="${h.id}">
+        <span class="history-topic">${esc(topic)}</span>
+        <span class="history-date">${esc(date)}</span>
+      </div>`;
+    }).join('');
+
+    list.querySelectorAll('.history-item').forEach(item => {
+      item.addEventListener('click', () => openHistory(parseInt(item.dataset.hid)));
+    });
+  } catch { /* sessizce gec */ }
+}
+
+async function openHistory(id) {
+  currentHistoryId = id;
+  try {
+    const res = await fetch(`/api/history/${id}`);
+    if (!res.ok) { toast('Oturum yuklenemedi.', 'error'); return; }
+    const s = await res.json();
+
+    $('histModalTitle').textContent = s.konu || 'Oturum Detayi';
+
+    const sections = [
+      { title: 'Acilis Tezi', key: 'agent_1_tez' },
+      { title: 'Itiraz & Karsi Tez', key: 'agent_2_itiraz' },
+      { title: 'Savunma', key: 'agent_1_savunma' },
+      { title: 'Bagimsiz Hakem', key: 'agent_3_hakem' },
+      { title: 'Sentez', key: 'sentez' },
+      { title: 'Nihai Karar', key: 'muhurlu_karar' }
+    ];
+
+    let html = `<div class="hist-meta"><strong>Tarih:</strong> ${esc(s.tarih || '')}</div>`;
+    for (const sec of sections) {
+      const content = s[sec.key] || '';
+      if (content) {
+        html += `<div class="hist-section">
+          <h3 class="hist-section-title">${esc(sec.title)}</h3>
+          <div class="hist-section-body">${esc(content)}</div>
+        </div>`;
+      }
+    }
+    $('histModalBody').innerHTML = html;
+    $('historyModal').classList.remove('hidden');
+  } catch { toast('Oturum yuklenemedi.', 'error'); }
+}
+
+/* History modal close */
+['histModalClose', 'histModalCloseBtn'].forEach(id => {
+  $(id)?.addEventListener('click', () => $('historyModal')?.classList.add('hidden'));
+});
+
+/* History export */
+$('histModalExport')?.addEventListener('click', () => {
+  if (currentHistoryId === null) return;
+  const a = document.createElement('a');
+  a.href = `/api/export/${currentHistoryId}`;
+  a.download = `avaria_oturum_${currentHistoryId}.md`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  toast('Markdown indiriliyor.', 'success');
+});
+
+/* Close modal on overlay click */
+$('historyModal')?.addEventListener('click', (e) => {
+  if (e.target === $('historyModal')) $('historyModal').classList.add('hidden');
+});
+
+
+/* ═══════════════════════════════════════════════════════════
+   FAZ 5: Sablon Olusturucu + Import
+═══════════════════════════════════════════════════════════ */
+let tmplRoleCount = 0;
+
+function addRoleField(title = '', desc = '') {
+  tmplRoleCount++;
+  const container = $('tmplRoles');
+  if (!container) return;
+  const div = document.createElement('div');
+  div.className = 'tmpl-role-row';
+  div.innerHTML = `
+    <input type="text" class="input input-sm tmpl-role-title" placeholder="Rol adi" value="${esc(title)}" />
+    <input type="text" class="input input-sm tmpl-role-desc" placeholder="Aciklama" value="${esc(desc)}" />
+  `;
+  container.appendChild(div);
+}
+
+/* Open template modal */
+$('btnCreateTemplate')?.addEventListener('click', () => {
+  $('tmplName').value = '';
+  $('tmplDisplayName').value = '';
+  $('tmplDesc').value = '';
+  $('tmplKeywords').value = '';
+  $('tmplImportUrl').value = '';
+  $('tmplRoles').innerHTML = '';
+  tmplRoleCount = 0;
+  addRoleField(); addRoleField(); addRoleField();
+  $('templateModal').classList.remove('hidden');
+});
+
+/* Add role button */
+$('btnAddRole')?.addEventListener('click', () => {
+  if (tmplRoleCount >= 5) { toast('Maksimum 5 rol eklenebilir.', 'error'); return; }
+  addRoleField();
+});
+
+/* Save template */
+$('btnSaveTemplate')?.addEventListener('click', async () => {
+  const name = $('tmplName').value.trim();
+  const displayName = $('tmplDisplayName').value.trim();
+  if (!name || !displayName) { toast('Ad ve gorunen ad gerekli.', 'error'); return; }
+
+  const roles = [];
+  document.querySelectorAll('.tmpl-role-row').forEach(row => {
+    const t = row.querySelector('.tmpl-role-title')?.value?.trim();
+    const d = row.querySelector('.tmpl-role-desc')?.value?.trim();
+    if (t) roles.push({ title: t, description: d || '', default_personality: 'akademik' });
+  });
+
+  if (roles.length < 2) { toast('En az 2 rol gerekli.', 'error'); return; }
+
+  const keywords = $('tmplKeywords').value.split(',').map(k => k.trim()).filter(Boolean);
+
+  try {
+    const res = await fetch('/api/templates/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, display_name: displayName, description: $('tmplDesc').value.trim(), roles, trigger_keywords: keywords })
+    });
+    if (!res.ok) throw new Error((await res.json()).detail || 'Hata');
+    toast('Sablon olusturuldu!', 'success');
+    $('templateModal').classList.add('hidden');
+    fetchTemplates(); // dropdown'u guncelle
+  } catch (err) { toast(err.message, 'error'); }
+});
+
+/* Import template */
+$('btnImportTemplate')?.addEventListener('click', async () => {
+  const url = $('tmplImportUrl').value.trim();
+  if (!url) { toast('GitHub raw URL girin.', 'error'); return; }
+
+  try {
+    const res = await fetch('/api/templates/import', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+    if (!res.ok) throw new Error((await res.json()).detail || 'Import hatasi');
+    const data = await res.json();
+    toast(`"${data.display_name || data.name}" import edildi!`, 'success');
+    $('templateModal').classList.add('hidden');
+    fetchTemplates();
+  } catch (err) { toast(err.message, 'error'); }
+});
+
+/* Template modal close */
+['tmplModalClose', 'tmplModalCloseBtn'].forEach(id => {
+  $(id)?.addEventListener('click', () => $('templateModal')?.classList.add('hidden'));
+});
+$('templateModal')?.addEventListener('click', (e) => {
+  if (e.target === $('templateModal')) $('templateModal').classList.add('hidden');
+});
+
+/* Load history on page load (after DOMContentLoaded) */
+document.addEventListener('DOMContentLoaded', loadHistory);

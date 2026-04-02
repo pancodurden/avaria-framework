@@ -38,3 +38,9 @@ Thumbs.db
 # ── Env files ─────────────────────────────────
 .env
 .env.*
+
+# ── Roadmap (personal) ───────────────────────
+yeniroadmap.md
+
+# ── Community templates (user-generated) ─────
+agents/community_templates/

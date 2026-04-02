@@ -1,0 +1,27 @@
+{
+  "name": "ogretmen_ogrenci",
+  "display_name": "Öğretmen-Öğrenci Simülasyonu",
+  "description": "Eğitim odaklı tartışma. Bir öğretmen ve farklı seviyelerdeki öğrenciler konuyu keşfeder, soru sorar ve öğrenir.",
+  "icon": "school",
+  "trigger_keywords": ["öğret", "öğren", "eğitim", "ders", "anlat", "açıkla", "nasıl", "nedir", "neden", "sınıf", "okul", "müfredat", "pedagoji", "ödev"],
+  "agent_count": 3,
+  "flow": ["ders_anlatimi", "soru_cevap", "derinlestirme", "hakem", "sentez", "nihai_karar"],
+  "roles": [
+    {
+      "title": "Kıdemli Öğretmen",
+      "description": "Konuyu yapılandırılmış ve anlaşılır şekilde sunar, sorulara yanıt verir",
+      "default_personality": "iyimser"
+    },
+    {
+      "title": "Meraklı Öğrenci",
+      "description": "Temel sorular sorar, kavramları anlamaya çalışır, kafa karışıklıklarını dile getirir",
+      "default_personality": "akademik"
+    },
+    {
+      "title": "İleri Seviye Öğrenci",
+      "description": "Derinlemesine sorular sorar, öğretmenin açıklamalarını sorgular ve genişletir",
+      "default_personality": "sinik"
+    }
+  ],
+  "generate_prompt": "'{topic}' konusu için bir öğretmen-öğrenci simülasyonu oluştur.\n\nSADECE geçerli bir JSON dizisi döndür. Her nesne şu anahtarları içermeli:\n- \"role\": kişinin rolü (Türkçe)\n- \"goal\": bu derste neyi başarmak istediği (1 Türkçe cümle)\n- \"backstory\": eğitim geçmişi (1 Türkçe cümle)\n\n1. Konunun uzmanı kıdemli öğretmen\n2. Temel seviye meraklı öğrenci\n3. İleri seviye sorgulayıcı öğrenci"
+}

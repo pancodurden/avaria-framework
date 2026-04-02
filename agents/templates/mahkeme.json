@@ -1,0 +1,27 @@
+{
+  "name": "mahkeme",
+  "display_name": "Akademik Mahkeme",
+  "description": "Akademik tartışma, karar ve analiz. İki taraflı tez-antitez yapısı ile bağımsız hakem değerlendirmesi.",
+  "icon": "gavel",
+  "trigger_keywords": ["tartış", "karar", "mahkeme", "analiz", "değerlendir", "etik", "karşılaştır", "yargı", "hukuk", "felsefe", "politika", "toplum"],
+  "agent_count": 3,
+  "flow": ["tez", "itiraz", "savunma", "hakem", "sentez", "nihai_karar"],
+  "roles": [
+    {
+      "title": "Savunucu Uzman",
+      "description": "Konunun lehine güçlü akademik argümanlar sunar",
+      "default_personality": "akademik"
+    },
+    {
+      "title": "Muhalif Uzman",
+      "description": "Konunun aleyhine karşı argümanlar ve eleştiriler sunar",
+      "default_personality": "sert"
+    },
+    {
+      "title": "Bağımsız Hakem",
+      "description": "Her iki tarafı tarafsız olarak değerlendirir",
+      "default_personality": "pragmatik"
+    }
+  ],
+  "generate_prompt": "'{topic}' konusu için tartışacak 3 akademik uzman profili oluştur.\n\nSADECE geçerli bir JSON dizisi döndür. Her nesne şu anahtarları içermeli:\n- \"role\": uzman unvanı ve alanı (Türkçe)\n- \"goal\": bu tartışmada neyi kanıtlamak istediği (1 Türkçe cümle)\n- \"backstory\": akademik geçmişi (1 Türkçe cümle)\n\nBirinci uzman konunun LEHİNE, ikinci uzman ALEYHİNE pozisyon alsın. Üçüncü uzman bağımsız hakem olsun."
+}

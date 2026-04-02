@@ -8,7 +8,7 @@ PERSONALITIES = {
     "pragmatik": "Pratik ve sonuç odaklı düşün. Teorik tartışmalar yerine uygulanabilir çözümler sun. Gerçekçi ol.",
 }
 
-def create_expert_agent(agent_data, llm_engine, personality="akademik"):
+def create_expert_agent(agent_data, llm_engine, personality="akademik", tools=None):
     p_note = PERSONALITIES.get(personality, PERSONALITIES["akademik"])
     hedef = agent_data.get('goal', 'Analiz yapmak.') + f" {p_note}"
     hikaye = agent_data.get('backstory', 'Uzman.') + " Verilen araştırma verilerini kullanarak güçlü, kanıta dayalı argümanlar üretirsin."
@@ -18,6 +18,6 @@ def create_expert_agent(agent_data, llm_engine, personality="akademik"):
         backstory=hikaye,
         verbose=True,
         allow_delegation=False,
-        tools=[],
+        tools=tools or [],
         llm=llm_engine
     )
