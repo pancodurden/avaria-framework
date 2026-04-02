@@ -316,6 +316,36 @@ def delete_template(name: str):
     return {"status": "ok", "deleted": safe_name}
 
 
+# ── Bug 6 Fix: Sandbox dosya erişim endpoint'leri ────────────────────
+from utils.tools import _SANDBOX_DIR
+
+@app.get("/api/sandbox/files")
+def list_sandbox_files():
+    """Sandbox dizinindeki dosyaları listeler."""
+    if not os.path.isdir(_SANDBOX_DIR):
+        return {"files": []}
+    files = []
+    for fname in os.listdir(_SANDBOX_DIR):
+        fpath = os.path.join(_SANDBOX_DIR, fname)
+        if os.path.isfile(fpath) and not fname.startswith("_"):
+            files.append({
+                "name": fname,
+                "size": os.path.getsize(fpath),
+            })
+    return {"files": files}
+
+
+@app.get("/api/sandbox/download/{filename}")
+def download_sandbox_file(filename: str):
+    """Sandbox'taki bir dosyayı indirir."""
+    from fastapi.responses import FileResponse
+    safe_name = os.path.basename(filename)
+    fpath = os.path.join(_SANDBOX_DIR, safe_name)
+    if not os.path.isfile(fpath):
+        raise HTTPException(status_code=404, detail="Dosya bulunamadı.")
+    return FileResponse(fpath, filename=safe_name)
+
+
 @app.get("/api/models")
 def get_models():
     models = get_ollama_models()
@@ -486,8 +516,29 @@ async def start_debate(req: DebateRequest):
             roles = [c.data.get('role', f'Uzman {i+1}') for i, c in enumerate(configs)]
             goals = [c.data.get('goal', '') for c in configs]
 
-            is_dev_mode = req.template == "yazilim_ekibi"
-            mode_label = "Yazılım ekibi" if is_dev_mode else "Mahkeme"
+            template_data = get_template_by_name(req.template) or {}
+            use_tools = template_data.get("use_tools", False)
+            is_mahkeme = req.template == "mahkeme"
+            mode_label = template_data.get("display_name", req.template)
+            flow = template_data.get("flow", ["tez", "itiraz", "savunma", "hakem", "sentez", "nihai_karar"])
+
+            # Flow adımlarını okunabilir Türkçe label'lara çevir
+            _FLOW_LABELS = {
+                "tez": "Açılış Tezi", "itiraz": "İtiraz & Karşı Tez",
+                "savunma": "Savunma & Çapraz Sorgu", "hakem": "Bağımsız Hakem Analizi",
+                "sentez": "Kapsamlı Sentez", "nihai_karar": "Mühürlü Nihai Karar",
+                "tasarim": "Tasarım & Mimari", "uygulama": "Uygulama Detayları",
+                "test_review": "Test & Code Review",
+                "literatur": "Literatür Taraması", "analiz": "Analiz & Değerlendirme",
+                "elestiri": "Eleştirel İnceleme",
+                "ders_anlatimi": "Ders Anlatımı", "soru_cevap": "Soru & Cevap",
+                "derinlestirme": "Derinleştirme & Tartışma",
+            }
+            def flow_label(step_idx: int) -> str:
+                if step_idx < len(flow):
+                    return _FLOW_LABELS.get(flow[step_idx], flow[step_idx].replace("_", " ").title())
+                return f"Adım {step_idx + 1}"
+
             q.put({"type": "log", "message": f"{mode_label} oturumu başlatılıyor..."})
 
             llm1 = create_llm(configs[0].model)
@@ -496,16 +547,16 @@ async def start_debate(req: DebateRequest):
             llm_p = create_llm(req.president_model, temp=0.1)
             llm_c = create_llm(req.court_model, temp=0.0)
 
-            # Yazılım ekibi modunda ajanlar tool kullanabilir
-            expert_tools = AGENT_TOOLS if is_dev_mode else []
+            # Şablonda use_tools: true ise ajanlar tool kullanabilir
+            expert_tools = AGENT_TOOLS if use_tools else []
             agent1 = create_expert_agent(configs[0].data, llm1, configs[0].personality, tools=expert_tools)
             agent2 = create_expert_agent(configs[1].data, llm2, configs[1].personality, tools=expert_tools)
             agent3 = create_expert_agent(configs[2].data, llm3, configs[2].personality, tools=expert_tools)
             president = create_judge_agent(llm_p)
             council = create_security_council(llm_c)
 
-            # ── OTURUM 1: Açılış Tezi ──────────────────────────────────────
-            q.put({"type": "step_start", "step": 1, "title": f"{roles[0]} — Açılış Tezi"})
+            # ── OTURUM 1 ──────────────────────────────────────
+            q.put({"type": "step_start", "step": 1, "title": f"{roles[0]} — {flow_label(0)}"})
             q.put({"type": "log", "message": f"'{topic}' konusunda internet araştırması yapılıyor..."})
             search_base = extract_search_terms(topic)
             q1 = f"{search_base} academic research evidence 2024"
@@ -531,16 +582,16 @@ Mahkeme üslubuyla yaz: ciddi, akademik, iddialı.""",
             q.put({"type": "step_complete", "step": 1, "content": r1, "heat": heat_score(r1)})
 
             # ── Yazılım Ekibi: Kod Feedback Loop ─────────────────────────
-            if is_dev_mode:
+            if use_tools:
                 r1 = _code_feedback_loop(r1, agent1, q, step_label=f"{roles[0]}")
 
-            # ── OTURUM 2: İtiraz ve Karşı Tez ──────────────────────────────
-            q.put({"type": "step_start", "step": 2, "title": f"{roles[1]} — İtiraz & Karşı Tez"})
+            # ── OTURUM 2 ──────────────────────────────────────
+            q.put({"type": "step_start", "step": 2, "title": f"{roles[1]} — {flow_label(1)}"})
             q.put({"type": "log", "message": "Karşı argüman için araştırma yapılıyor..."})
             q2 = f"{search_base} criticism counterargument problems 2024"
             arastirma2 = web_search(q2, topic_keywords=q2.split())
             devil_prefix = ""
-            if req.devil_advocate:
+            if req.devil_advocate and is_mahkeme:
                 devil_prefix = f"SEN ŞEYTAN'IN AVUKATISIN. Görüşün ne olursa olsun, '{roles[0]}' nin tezinin TAM KARŞISINDAKİ pozisyonu savunacaksın.\n\n"
             r2 = run_crew([agent2], Task(
                 description=f"""{devil_prefix}SEN KİMSİN: {roles[1]}. Uzmanlık alanın ve hedefin: {goals[1]}
@@ -567,11 +618,11 @@ Keskin, iddialı ve tavizsiz yaz. Rakibini savunmaya çek.""",
             ))
             q.put({"type": "step_complete", "step": 2, "content": r2, "heat": heat_score(r2)})
 
-            if is_dev_mode:
+            if use_tools:
                 r2 = _code_feedback_loop(r2, agent2, q, step_label=f"{roles[1]}")
 
-            # ── OTURUM 3: Savunma ve Çapraz Sorgu ──────────────────────────
-            q.put({"type": "step_start", "step": 3, "title": f"{roles[0]} — Savunma & Çapraz Sorgu"})
+            # ── OTURUM 3 ──────────────────────────────────────
+            q.put({"type": "step_start", "step": 3, "title": f"{roles[0]} — {flow_label(2)}"})
             q.put({"type": "log", "message": "Savunma için ek araştırma yapılıyor..."})
             q3 = f"{search_base} defense rebuttal expert opinion"
             arastirma3 = web_search(q3, topic_keywords=q3.split())
@@ -604,11 +655,11 @@ Savunman güçlü, tutarlı ve orijinal pozisyonuna sadık olsun. Türkçe yaz."
             ))
             q.put({"type": "step_complete", "step": 3, "content": r3, "heat": heat_score(r3)})
 
-            if is_dev_mode:
+            if use_tools:
                 r3 = _code_feedback_loop(r3, agent1, q, step_label=f"{roles[0]}")
 
-            # ── OTURUM 4: Bağımsız Hakem Değerlendirmesi ───────────────────
-            q.put({"type": "step_start", "step": 4, "title": f"{roles[2]} — Bağımsız Hakem Analizi"})
+            # ── OTURUM 4 ───────────────────────────────────────
+            q.put({"type": "step_start", "step": 4, "title": f"{roles[2]} — {flow_label(3)}"})
             q.put({"type": "log", "message": "Hakem için ek araştırma yapılıyor..."})
             q4 = f"{search_base} analysis perspectives academic study"
             arastirma4 = web_search(q4, topic_keywords=q4.split())
@@ -645,8 +696,8 @@ Tarafsız, analitik ve akademik yaz. Türkçe.""",
             ))
             q.put({"type": "step_complete", "step": 4, "content": r4, "heat": heat_score(r4)})
 
-            # ── OTURUM 5: Kurul Başkanı Sentezi ────────────────────────────
-            q.put({"type": "step_start", "step": 5, "title": "Kurul Başkanı — Kapsamlı Sentez"})
+            # ── OTURUM 5 ──────────────────────────────────────
+            q.put({"type": "step_start", "step": 5, "title": f"Kurul Başkanı — {flow_label(4)}"})
             sentez = run_crew([president], Task(
                 description=f"""SEN KİMSİN: Sentezleyici Kurul Başkanı.
 '{topic}' konusundaki mahkeme oturumunun tüm tutanakları önünde.
@@ -672,8 +723,8 @@ Akademik, tarafsız ve kapsamlı yaz. Türkçe.""",
             ))
             q.put({"type": "step_complete", "step": 5, "content": sentez, "heat": heat_score(sentez)})
 
-            # ── OTURUM 6: Yüksek Mahkeme Nihai Kararı ──────────────────────
-            q.put({"type": "step_start", "step": 6, "title": "Yüksek Güvenlik Konseyi — Mühürlü Nihai Karar"})
+            # ── OTURUM 6 ──────────────────────────────────────
+            q.put({"type": "step_start", "step": 6, "title": f"Yüksek Güvenlik Konseyi — {flow_label(5)}"})
 
             # Her kurul üyesi gerçekten çalışıyor — sırayla review zinciri
             q.put({"type": "log", "message": "Mantık Analisti inceliyor..."})
@@ -750,6 +801,14 @@ GÖREV: Kararın toplumsal ve ahlaki uygunluğunu değerlendir.
             ))
 
             q.put({"type": "log", "message": "Nihai Karar Mercii kararı mühürlüyor..."})
+            # Şablona göre karar formatı (Bug 8 fix)
+            default_verdict = "DAVA NO: AVR-{date}\nKONU: {topic}\n\n§1. KARAR\n§2. GEREKÇE\n§3. SONUÇ"
+            verdict_fmt = template_data.get("verdict_format", default_verdict)
+            verdict_fmt = verdict_fmt.replace("{date}", datetime.now().strftime('%Y%m%d'))
+            verdict_fmt = verdict_fmt.replace("{topic}", topic)
+            verdict_fmt = verdict_fmt.replace("{role1}", roles[0])
+            verdict_fmt = verdict_fmt.replace("{role2}", roles[1])
+
             muhurlu = run_crew([council[4]], Task(
                 description=f"""SEN KİMSİN: Nihai Karar Mercii — Yüksek Güvenlik Konseyi Başkanı.
 '{topic}' davası tamamlandı. Konsey üyelerinin değerlendirmeleri:
@@ -771,20 +830,11 @@ GÖREV: Kararın toplumsal ve ahlaki uygunluğunu değerlendir.
 
 GÖREV: Tüm bu değerlendirmeleri göz önünde tutarak mühürlü nihai kararı ver.
 
-KARAR FORMATI (Türkçe, resmi mahkeme üslubu):
+KARAR FORMATI (Türkçe):
 
-DAVA NO: AVR-{datetime.now().strftime('%Y%m%d')}
-KONU: {topic}
+{verdict_fmt}
 
-§1. KARAR: [Açık bir sonuç belirt]
-§2. GEREKÇE: [Hangi argümanlar belirleyiciydi, konsey bulgularına atıfla]
-§3. HANGİ TARAF DAHA GÜÇLÜYDÜ: [{roles[0]} mi {roles[1]} mi ve neden]
-§4. KABUL EDİLEN İDDİALAR: [Tartışmasız doğru kabul edilen noktalar]
-§5. REDDEDİLEN İDDİALAR: [Kanıtsız veya çürütülmüş iddialar]
-§6. TOPLUMSAL ÖNERİ: [Politika, bilim veya topluma öneri]
-§7. AZINLIK GÖRÜŞÜ: [ZORUNLU — Tartışmada karşı tarafın en güçlü argümanını temel alarak azınlık görüşü yaz. 'Yok' yazamazsın.]
-
-KARAR MÜHÜRLENMİŞTİR. Türkçe. Resmi ve kesin.""",
+KARAR MÜHÜRLENMİŞTİR. Türkçe. Kesin ve net.""",
                 agent=council[4],
                 expected_output="Resmi mühürlü nihai mahkeme kararı. Türkçe. 500-800 kelime."
             ))
@@ -811,25 +861,34 @@ KARAR MÜHÜRLENMİŞTİR. Türkçe. Resmi ve kesin.""",
             q.put({"type": "final_verdict", "content": muhurlu, "synthesis": synthesis_short})
 
             # ── Full debate saved to memory (append, üzerine yazma) ─────────
-            memory_path = "avaria_memory.json"
             try:
-                with open(memory_path, "r", encoding="utf-8") as f:
+                with open(MEMORY_PATH, "r", encoding="utf-8") as f:
                     history = json.load(f)
                 if not isinstance(history, list):
                     history = [history]   # eski format: tek obje → listeye çevir
             except (FileNotFoundError, json.JSONDecodeError):
                 history = []
-            history.append({
+            # Şablona göre dinamik alan isimleri
+            flow = template_data.get("flow", ["tez", "itiraz", "savunma", "hakem", "sentez", "nihai_karar"])
+            session_record = {
                 "tarih": str(datetime.now()),
                 "konu": topic,
-                "agent_1_tez": r1,
-                "agent_2_itiraz": r2,
-                "agent_1_savunma": r3,
-                "agent_3_hakem": r4,
-                "sentez": sentez,
-                "muhurlu_karar": muhurlu
-            })
-            with open(memory_path, "w", encoding="utf-8") as f:
+                "sablon": req.template,
+                "sablon_adi": mode_label,
+            }
+            step_data = [
+                (roles[0], r1),
+                (roles[1], r2),
+                (f"{roles[0]} (Savunma)", r3),
+                (f"{roles[2]} (Hakem)", r4),
+            ]
+            for i, (role, content) in enumerate(step_data):
+                label = flow[i] if i < len(flow) else f"adim_{i+1}"
+                session_record[f"{label}__{role}"] = content
+            session_record["sentez"] = sentez
+            session_record["muhurlu_karar"] = muhurlu
+            history.append(session_record)
+            with open(MEMORY_PATH, "w", encoding="utf-8") as f:
                 json.dump(history, f, indent=4, ensure_ascii=False)
 
         except Exception as e:

@@ -23,5 +23,6 @@
       "default_personality": "iyimser"
     }
   ],
+  "verdict_format": "ARAŞTIRMA RAPORU\nKONU: {topic}\nTARİH: {date}\n\n1. BULGULAR: [Temel araştırma bulguları]\n2. METODOLOJİK DEĞERLENDİRME: [Veri ve yöntem kalitesi]\n3. LİTERATÜR UYUMU: [Mevcut literatürle tutarlılık]\n4. SONUÇ: [Kanıtların işaret ettiği sonuç]\n5. ÖNERİLER: [Gelecek araştırmalar için öneriler]\n6. SINIRLILIKLAR: [Bu analizin sınırları]",
   "generate_prompt": "'{topic}' konusu için bir akademik araştırma paneli oluştur.\n\nSADECE geçerli bir JSON dizisi döndür. Her nesne şu anahtarları içermeli:\n- \"role\": araştırmacının uzmanlık alanı (Türkçe)\n- \"goal\": bu araştırmada neyi ortaya koymak istediği (1 Türkçe cümle)\n- \"backstory\": akademik geçmişi (1 Türkçe cümle)\n\n1. Birincil araştırmacı (konunun ana uzmanı)\n2. Metodoloji ve veri analizi uzmanı\n3. Disiplinlerarası perspektif sunan analist"
 }

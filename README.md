@@ -1,146 +1,281 @@
-# ⚖️ Avaria Multi-Agent Framework
+# Avaria Multi-Agent Framework
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue?style=for-the-badge&logo=python)
 ![FastAPI](https://img.shields.io/badge/FastAPI-SSE_Streaming-009688?style=for-the-badge&logo=fastapi)
 ![CrewAI](https://img.shields.io/badge/CrewAI-Multi_Agent-orange?style=for-the-badge)
 ![Ollama](https://img.shields.io/badge/Ollama-Local_LLMs-black?style=for-the-badge)
+![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker)
 
-🌍 **[English](#english)** | 🇹🇷 **[Türkçe](#türkçe)**
+**[English](#english)** | **[Turkce](#türkçe)**
 
 ---
 
 <a id="english"></a>
-## 🌍 English
+## English
 
 ### What is Avaria?
 
-Avaria is a **local multi-agent debate framework** powered by CrewAI and Ollama. You give it any research topic and it assembles a full courtroom: three expert agents debate each other across 6 structured rounds, a synthesizer summarizes the arguments, and a 5-member High Security Council delivers a sealed final verdict — all running on your local machine, no API keys required.
+Avaria is a **local multi-agent debate and research framework** powered by CrewAI and Ollama. Give it any topic — it assembles an expert team, runs a structured multi-round debate with live web research, and delivers a sealed verdict. Everything runs locally, no API keys required.
 
-### 🏛️ How It Works
+### v3.0 — What's New
 
-| Round | Agent | Role |
-|-------|-------|------|
-| 1 | Expert 1 | Opening thesis with web research |
-| 2 | Expert 2 | Rebuttal & counter-thesis |
-| 3 | Expert 1 | Defense & cross-examination |
-| 4 | Expert 3 (Referee) | Independent analysis |
-| 5 | Synthesizer | Comprehensive synthesis |
-| 6 | High Security Council (5 agents) | Sealed final verdict |
+- **Smart Hardware Analyzer** — Auto-detects GPU/RAM and recommends optimal models
+- **Template System** — 4 built-in debate modes + create your own or import from GitHub
+- **Agentic Tool Use** — Agents can execute Python code, read/write files, run terminal commands (sandbox)
+- **Code Feedback Loop** — If agent-generated code fails, it auto-retries up to 3 times
+- **Intent Analysis** — AI analyzes your topic and suggests the best debate template
+- **Session History** — All debates saved, browseable, exportable as Markdown
+- **Plugin Ecosystem** — Create templates via UI, import from GitHub raw URL, delete
+- **Docker Support** — One-command deploy with `docker-compose up`
 
-- **Real-time web search**: DuckDuckGo results are injected into each round's prompt
-- **Live streaming**: Results stream in real-time via Server-Sent Events (SSE)
-- **Auto expert generation**: AI generates 3 domain experts from your topic automatically
-- **Devil's Advocate mode**: Force Expert 2 to always argue the opposing side
-- **Argument map**: Visual SVG graph of the debate structure
-- **Export**: Download the full debate as Markdown
+### Debate Templates
 
-### ⚙️ Recommended Hardware
+| Template | Description | Agents |
+|----------|-------------|--------|
+| Akademik Mahkeme | Courtroom-style thesis vs antithesis debate | Advocate, Opponent, Referee |
+| Yazilim Ekibi | Software dev team with tool use enabled | PM/Architect, Senior Dev, QA |
+| Arastirma Paneli | Academic research panel | Researcher, Methodologist, Interdisciplinary Analyst |
+| Ogretmen-Ogrenci | Teacher-student simulation | Teacher, Curious Student, Advanced Student |
+| + Custom | Create your own or import from GitHub | You decide |
 
-Tested on **RTX 5070 Ti + AMD 7800X3D** with `gemma2:27b` for experts. 
+### How It Works
 
-- **Minimum recommended**: 27B parameter model for coherent arguments
-- **Lower-end devices**: 7B/13B models work but argument quality drops significantly
-- You can mix models — lighter model for the council, heavier for experts
+```
+Topic Input --> Intent Analysis --> Template Selection --> Expert Generation
+     |                                                          |
+     v                                                          v
+Web Research -----> 6-Round Structured Debate -----> Synthesis
+                          |                              |
+                    [Live SSE Stream]              5-Member Council
+                          |                              |
+                          v                              v
+                   Real-time UI  <------- Sealed Final Verdict
+```
 
-### 🚀 Installation
+| Round | Role |
+|-------|------|
+| 1 | Opening thesis with web research |
+| 2 | Rebuttal & counter-thesis |
+| 3 | Defense & cross-examination |
+| 4 | Independent referee analysis |
+| 5 | Comprehensive synthesis |
+| 6 | 5-member High Security Council sealed verdict |
 
-1. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
+### Recommended Hardware
 
-2. **Install & start Ollama**, then pull a model
-   ```bash
-   ollama pull gemma2:27b
-   ```
+Tested on **RTX 5070 Ti (16GB VRAM) + AMD 7800X3D + 32GB RAM** with `gemma2:27b`.
 
-3. **Run the server**
-   ```bash
-   uvicorn server:app --host 0.0.0.0 --port 8080
-   ```
+| VRAM | Recommended Models |
+|------|--------------------|
+| < 6 GB | llama3.2:3b, qwen2.5:3b |
+| 6-10 GB | llama3.1:8b, mistral:7b |
+| 10-16 GB | llama3.1:8b, gemma2:9b |
+| 16+ GB | gemma2:27b, mixtral:8x7b |
 
-4. **Open your browser** → `http://localhost:8080`
+The hardware analyzer auto-detects your setup and shows recommendations in the UI.
 
-### 📁 Project Structure
+### Installation
+
+**Option 1 — Local**
+
+```bash
+# 1. Clone
+git clone https://github.com/pancodurden/avaria-framework.git
+cd avaria-framework
+
+# 2. Create venv & install
+python -m venv venv
+venv\Scripts\activate        # Windows
+# source venv/bin/activate   # Linux/Mac
+pip install -r requirements.txt
+
+# 3. Install Ollama & pull a model
+ollama pull gemma2:27b
+
+# 4. Run
+python server.py
+```
+
+Open `http://localhost:8080`
+
+**Option 2 — Docker**
+
+```bash
+docker-compose up --build
+```
+
+This starts both Ollama and Avaria. Access at `http://localhost:8080`.
+
+### Creating Custom Templates
+
+**From UI:**
+1. Click "Sablon Olustur" in the sidebar
+2. Fill in name, roles, keywords
+3. Save — it's immediately available
+
+**From GitHub:**
+1. Create a JSON template file (see `agents/templates/` for examples)
+2. Push to any public GitHub repo
+3. Get the **Raw URL** of the JSON file
+4. In Avaria UI: Sablon Olustur --> paste Raw URL --> Import
+
+### API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/models` | List available Ollama models |
+| GET | `/api/hardware` | GPU/RAM info & model recommendations |
+| GET | `/api/templates` | List all debate templates |
+| POST | `/api/analyze-intent` | Analyze topic & suggest template |
+| POST | `/api/generate-experts` | Generate expert profiles for topic |
+| POST | `/api/start-debate` | Start a debate session |
+| GET | `/api/debate-stream/{id}` | SSE stream for debate events |
+| GET | `/api/history` | List past sessions |
+| GET | `/api/history/{id}` | Get session detail |
+| GET | `/api/export/{id}` | Export session as Markdown |
+| POST | `/api/templates/create` | Create custom template |
+| POST | `/api/templates/import` | Import template from URL |
+| DELETE | `/api/templates/{name}` | Delete community template |
+| GET | `/api/sandbox/files` | List sandbox files |
+| GET | `/api/sandbox/download/{file}` | Download sandbox file |
+
+### Project Structure
 
 ```
 avaria-framework/
-├── server.py          # FastAPI backend, debate orchestration, SSE streaming
+├── server.py                  # FastAPI backend, 15+ endpoints, SSE streaming
+├── Dockerfile                 # Docker image
+├── docker-compose.yml         # Ollama + Avaria services
+├── requirements.txt           # Pinned dependencies
 ├── agents/
-│   ├── debaters.py    # Expert agent factory
-│   └── judge.py       # Synthesizer + 5-member Security Council
+│   ├── debaters.py            # Expert agent factory (with tool support)
+│   ├── judge.py               # Synthesizer + 5-member Security Council
+│   ├── templates/             # Built-in debate templates (JSON)
+│   │   ├── mahkeme.json
+│   │   ├── yazilim_ekibi.json
+│   │   ├── arastirma_paneli.json
+│   │   └── ogretmen_ogrenci.json
+│   └── community_templates/   # User-created & imported templates
 ├── services/
-│   └── llm_client.py  # Ollama LLM client
+│   └── llm_client.py          # Ollama LLM client (centralized OLLAMA_HOST)
 ├── utils/
-│   └── stateless_loop.py  # Robust JSON parser
+│   ├── hardware_analyzer.py   # GPU/RAM detection & model recommendations
+│   ├── intent_analyzer.py     # Topic-to-template matching (keyword + LLM)
+│   ├── tools.py               # Sandboxed agentic tools (code exec, file I/O, terminal)
+│   └── stateless_loop.py      # Robust JSON parser
 └── static/
-    ├── index.html     # Single-page app
-    ├── app.js         # Frontend logic, SSE consumer
-    └── style.css      # Woody/creamy UI theme
+    ├── index.html             # Single-page app
+    ├── app.js                 # Frontend logic, SSE consumer
+    └── style.css              # Woody/creamy UI theme
 ```
 
-### 🤝 Contributing
+### Contributing
 
-Fork, modify, distribute freely. PRs welcome — especially for:
+Fork, modify, distribute freely under MIT license. PRs welcome — especially for:
+- New debate templates
 - Improved prompting strategies
-- New agent personality types
-- Better argument visualization
 - Multi-language support
+- Better argument visualization
 
 ---
 
 <a id="türkçe"></a>
-## 🇹🇷 Türkçe
+## Turkce
 
 ### Avaria Nedir?
 
-Avaria, CrewAI ve Ollama üzerine kurulu **yerel çok ajanlı tartışma çerçevesidir**. Herhangi bir araştırma konusu verin — sistem otomatik olarak 3 uzman ajan oluşturur, 6 turlu yapılandırılmış bir mahkeme tartışması yürütür ve 5 üyeli Yüksek Güvenlik Konseyi mühürlü nihai kararı verir. API anahtarı gerekmez, her şey yerel çalışır.
+Avaria, CrewAI ve Ollama uzerine kurulu **yerel cok ajanli tartisma ve arastirma cercevesidir**. Herhangi bir konu verin — sistem otomatik olarak uzman ekip olusturur, canli web arastirmali yapilandirilmis tartisma yurutur ve muhurlu nihai karar verir. API anahtari gerekmez, her sey yerel calisir.
 
-### 🏛️ Tartışma Yapısı
+### v3.0 — Yenilikler
 
-| Tur | Ajan | Görev |
-|-----|------|-------|
-| 1 | Uzman 1 | Web araştırmalı açılış tezi |
-| 2 | Uzman 2 | İtiraz ve karşı tez |
-| 3 | Uzman 1 | Savunma ve çapraz sorgu |
-| 4 | Uzman 3 (Hakem) | Bağımsız analiz |
-| 5 | Sentezleyici | Kapsamlı sentez |
-| 6 | Yüksek Güvenlik Konseyi (5 ajan) | Mühürlü nihai karar |
+- **Akilli Donanim Analizoru** — GPU/RAM otomatik tespit, uygun model onerisi
+- **Sablon Sistemi** — 4 hazir tartisma modu + kendi sablonunu olustur veya GitHub'dan import et
+- **Agentic Tool Use** — Ajanlar Python kodu calistirabilir, dosya okuyup yazabilir, terminal komutu calistirabilir
+- **Kod Geri Bildirim Dongusu** — Ajan kodu hata verirse otomatik 3 denemeye kadar duzeltir
+- **Niyet Analizi** — Konunuzu analiz edip en uygun tartisma sablonunu onerir
+- **Oturum Gecmisi** — Tum tartismalar kaydedilir, goruntulenebilir, Markdown olarak export edilir
+- **Plugin Ekosistemi** — UI'dan sablon olustur, GitHub raw URL'den import et, sil
+- **Docker Destegi** — `docker-compose up` ile tek komutla deploy
 
-- **Gerçek zamanlı web araması**: Her turda DuckDuckGo sonuçları prompt'a enjekte edilir
-- **Canlı akış**: Sonuçlar SSE (Server-Sent Events) ile gerçek zamanlı akar
-- **Otomatik uzman üretimi**: Konudan 3 alan uzmanı otomatik oluşturulur
-- **Şeytan'ın Avukatı modu**: Uzman 2'yi her zaman karşı pozisyonu savunmaya zorlar
-- **Argüman haritası**: Tartışma yapısının görsel SVG grafiği
-- **Dışa aktarma**: Tartışmayı Markdown olarak indirin
+### Tartisma Sablonlari
 
-### ⚙️ Önerilen Donanım
+| Sablon | Aciklama | Ajanlar |
+|--------|----------|---------|
+| Akademik Mahkeme | Tez vs antitez mahkeme tartismasi | Savunucu, Muhalif, Hakem |
+| Yazilim Ekibi | Tool kullanan yazilim gelistirme ekibi | PM/Mimar, Senior Dev, QA |
+| Arastirma Paneli | Akademik arastirma paneli | Arastirmaci, Metodolog, Disiplinlerarasi Analist |
+| Ogretmen-Ogrenci | Ogretmen-ogrenci simulasyonu | Ogretmen, Merakli Ogrenci, Ileri Ogrenci |
+| + Ozel | Kendin olustur veya GitHub'dan import et | Sen karar ver |
 
-**RTX 5070 Ti + AMD 7800X3D** üzerinde `gemma2:27b` ile test edildi.
+### Nasil Calisir
 
-- **Önerilen minimum**: Tutarlı argümanlar için 27B parametre model
-- **Düşük donanım**: 7B/13B modeller çalışır ama argüman kalitesi düşer
-- Modelleri karıştırabilirsiniz — konsey için hafif, uzmanlar için ağır model
+| Tur | Gorev |
+|-----|-------|
+| 1 | Web arastirmali acilis tezi |
+| 2 | Itiraz ve karsi tez |
+| 3 | Savunma ve capraz sorgu |
+| 4 | Bagimsiz hakem analizi |
+| 5 | Kapsamli sentez |
+| 6 | 5 uyeli Yuksek Guvenlik Konseyi muhurlu nihai karar |
 
-### 🚀 Kurulum
+### Onerilen Donanim
 
-1. **Bağımlılıkları yükleyin**
-   ```bash
-   pip install -r requirements.txt
-   ```
+**RTX 5070 Ti (16GB VRAM) + AMD 7800X3D + 32GB RAM** uzerinde `gemma2:27b` ile test edildi.
 
-2. **Ollama'yı kurun ve model indirin**
-   ```bash
-   ollama pull gemma2:27b
-   ```
+| VRAM | Onerilen Modeller |
+|------|-------------------|
+| < 6 GB | llama3.2:3b, qwen2.5:3b |
+| 6-10 GB | llama3.1:8b, mistral:7b |
+| 10-16 GB | llama3.1:8b, gemma2:9b |
+| 16+ GB | gemma2:27b, mixtral:8x7b |
 
-3. **Sunucuyu başlatın**
-   ```bash
-   uvicorn server:app --host 0.0.0.0 --port 8080
-   ```
+Donanim analizoru kurulumunuzu otomatik tespit edip UI'da onerileri gosterir.
 
-4. **Tarayıcıda açın** → `http://localhost:8080`
+### Kurulum
 
-### 🤝 Katkı
+**Yontem 1 — Yerel**
 
-Forklayın, değiştirin, dağıtın — tamamen serbesttir. PR'lar memnuniyetle karşılanır.
+```bash
+# 1. Klonla
+git clone https://github.com/pancodurden/avaria-framework.git
+cd avaria-framework
+
+# 2. Venv olustur & kur
+python -m venv venv
+venv\Scripts\activate        # Windows
+# source venv/bin/activate   # Linux/Mac
+pip install -r requirements.txt
+
+# 3. Ollama kur & model indir
+ollama pull gemma2:27b
+
+# 4. Calistir
+python server.py
+```
+
+Tarayicida ac: `http://localhost:8080`
+
+**Yontem 2 — Docker**
+
+```bash
+docker-compose up --build
+```
+
+Ollama ve Avaria birlikte baslar. `http://localhost:8080` adresinden erisin.
+
+### Ozel Sablon Olusturma
+
+**UI'dan:**
+1. Kenar cubugunda "Sablon Olustur"a tikla
+2. Ad, roller, anahtar kelimeler doldur
+3. Kaydet — aninda kullanilabilir
+
+**GitHub'dan:**
+1. JSON sablon dosyasi olustur (`agents/templates/` icindeki orneklere bak)
+2. Herhangi bir public GitHub reposuna push et
+3. JSON dosyasinin **Raw URL**'sini al
+4. Avaria UI'da: Sablon Olustur --> Raw URL yapistir --> Import
+
+### Katki
+
+MIT lisansi altinda forklayip dagitabilirsiniz. PR'lar memnuniyetle karsilanir.

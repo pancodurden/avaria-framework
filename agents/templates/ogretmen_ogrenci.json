@@ -23,5 +23,6 @@
       "default_personality": "sinik"
     }
   ],
+  "verdict_format": "DERS DEĞERLENDİRMESİ\nKONU: {topic}\nTARİH: {date}\n\n1. ÖĞRENME ÇIKTILARI: [Bu derste ortaya çıkan temel kavramlar]\n2. ANLAŞILAN NOKTALAR: [Netleşen konular]\n3. AÇIK KALAN SORULAR: [Hâlâ cevaplanmamış sorular]\n4. İLERİ OKUMA: [Konuyu derinleştirmek için öneriler]\n5. GENEL DEĞERLENDİRME: [Dersin kalitesi ve öğrenme seviyesi]",
   "generate_prompt": "'{topic}' konusu için bir öğretmen-öğrenci simülasyonu oluştur.\n\nSADECE geçerli bir JSON dizisi döndür. Her nesne şu anahtarları içermeli:\n- \"role\": kişinin rolü (Türkçe)\n- \"goal\": bu derste neyi başarmak istediği (1 Türkçe cümle)\n- \"backstory\": eğitim geçmişi (1 Türkçe cümle)\n\n1. Konunun uzmanı kıdemli öğretmen\n2. Temel seviye meraklı öğrenci\n3. İleri seviye sorgulayıcı öğrenci"
 }

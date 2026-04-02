@@ -4,6 +4,7 @@
   "description": "Yazılım projesi planlama, kod inceleme ve teknik karar verme. PM, Senior Dev, QA ve Code Reviewer rolleri.",
   "icon": "code",
   "trigger_keywords": ["kod", "yazılım", "geliştir", "program", "uygulama", "api", "backend", "frontend", "bug", "hata", "proje", "mimari", "database", "deploy", "test"],
+  "use_tools": true,
   "agent_count": 3,
   "flow": ["tasarim", "uygulama", "test_review", "hakem", "sentez", "nihai_karar"],
   "roles": [
@@ -23,5 +24,6 @@
       "default_personality": "sinik"
     }
   ],
+  "verdict_format": "PROJE: {topic}\nTARİH: {date}\n\n1. TEKNİK KARAR: [Önerilen mimari/çözüm]\n2. GEREKÇE: [Neden bu yaklaşım tercih edildi]\n3. UYGULAMA PLANI: [Adım adım nasıl hayata geçirilecek]\n4. RİSKLER: [Potansiyel teknik riskler ve çözümleri]\n5. TEST STRATEJİSİ: [Nasıl test edilecek]\n6. TAHMİNİ SÜRE: [Uygulama için gereken zaman]",
   "generate_prompt": "'{topic}' konusu için bir yazılım geliştirme ekibi oluştur.\n\nSADECE geçerli bir JSON dizisi döndür. Her nesne şu anahtarları içermeli:\n- \"role\": uzmanın rolü (Türkçe)\n- \"goal\": bu projede neyi başarmak istediği (1 Türkçe cümle)\n- \"backstory\": profesyonel geçmişi (1 Türkçe cümle)\n\n1. Proje Yöneticisi & Yazılım Mimarı\n2. Kıdemli Full-Stack Geliştirici\n3. QA Mühendisi & Code Reviewer"
 }

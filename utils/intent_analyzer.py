@@ -5,7 +5,8 @@ Kullanıcının konusunu analiz edip en uygun tartışma şablonunu seçer.
 
 import json
 import os
-import requests
+
+from services.llm_client import OLLAMA_HOST
 
 TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "..", "agents", "templates")
 COMMUNITY_DIR = os.path.join(os.path.dirname(__file__), "..", "agents", "community_templates")
@@ -85,10 +86,10 @@ MEVCUT MODLAR:
 
 SADECE mod adını döndür, başka hiçbir şey yazma. Seçenekler: {', '.join(names)}"""
 
-    host = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+    import requests
     try:
         resp = requests.post(
-            f"{host}/api/generate",
+            f"{OLLAMA_HOST}/api/generate",
             json={"model": model, "prompt": prompt, "stream": False},
             timeout=30
         )

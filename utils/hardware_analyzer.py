@@ -3,6 +3,7 @@ Avaria — Akıllı Donanım Analizörü
 GPU VRAM, RAM ve Ollama modellerini tespit edip uygun model önerir.
 """
 
+import os
 import subprocess
 import platform
 import requests

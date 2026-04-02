@@ -1,7 +1,7 @@
-fastapi
-uvicorn[standard]
-crewai
-requests
-ddgs
-pydantic
-psutil
+fastapi==0.135.2
+uvicorn[standard]==0.42.0
+crewai==1.12.2
+requests==2.33.1
+ddgs==9.12.0
+pydantic==2.11.10
+psutil==7.2.2

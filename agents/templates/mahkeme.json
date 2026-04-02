@@ -23,5 +23,6 @@
       "default_personality": "pragmatik"
     }
   ],
+  "verdict_format": "DAVA NO: AVR-{date}\nKONU: {topic}\n\n§1. KARAR: [Açık bir sonuç belirt]\n§2. GEREKÇE: [Hangi argümanlar belirleyiciydi]\n§3. HANGİ TARAF DAHA GÜÇLÜYDÜ: [{role1} mi {role2} mi ve neden]\n§4. KABUL EDİLEN İDDİALAR: [Tartışmasız doğru kabul edilen noktalar]\n§5. REDDEDİLEN İDDİALAR: [Kanıtsız veya çürütülmüş iddialar]\n§6. TOPLUMSAL ÖNERİ: [Politika, bilim veya topluma öneri]\n§7. AZINLIK GÖRÜŞÜ: [ZORUNLU — Tartışmada karşı tarafın en güçlü argümanını temel alarak azınlık görüşü yaz. 'Yok' yazamazsın.]",
   "generate_prompt": "'{topic}' konusu için tartışacak 3 akademik uzman profili oluştur.\n\nSADECE geçerli bir JSON dizisi döndür. Her nesne şu anahtarları içermeli:\n- \"role\": uzman unvanı ve alanı (Türkçe)\n- \"goal\": bu tartışmada neyi kanıtlamak istediği (1 Türkçe cümle)\n- \"backstory\": akademik geçmişi (1 Türkçe cümle)\n\nBirinci uzman konunun LEHİNE, ikinci uzman ALEYHİNE pozisyon alsın. Üçüncü uzman bağımsız hakem olsun."
 }
