@@ -216,21 +216,34 @@ def export_session(session_id: int):
         raise HTTPException(status_code=404, detail="Oturum bulunamadı.")
 
     s = history[session_id]
+    sablon_adi = s.get('sablon_adi', 'Avaria')
     md = f"# AVARIA — Araştırma Raporu\n\n"
     md += f"**Konu:** {s.get('konu', '')}\n"
-    md += f"**Tarih:** {s.get('tarih', '')}\n\n---\n\n"
-    md += f"## 1. Açılış Tezi\n\n{s.get('agent_1_tez', '')}\n\n---\n\n"
-    md += f"## 2. İtiraz & Karşı Tez\n\n{s.get('agent_2_itiraz', '')}\n\n---\n\n"
-    md += f"## 3. Savunma\n\n{s.get('agent_1_savunma', '')}\n\n---\n\n"
-    md += f"## 4. Bağımsız Hakem\n\n{s.get('agent_3_hakem', '')}\n\n---\n\n"
-    md += f"## 5. Sentez\n\n{s.get('sentez', '')}\n\n---\n\n"
-    md += f"## 6. Nihai Karar\n\n{s.get('muhurlu_karar', '')}\n"
+    md += f"**Tarih:** {s.get('tarih', '')}\n"
+    md += f"**Şablon:** {sablon_adi}\n\n---\n\n"
+
+    # Dinamik alan isimlerini oku (flow__role formatı)
+    step_num = 1
+    for key, val in s.items():
+        if key in ('tarih', 'konu', 'sablon', 'sablon_adi', 'sentez', 'muhurlu_karar'):
+            continue
+        # Eski format desteği (agent_1_tez vb.)
+        if key.startswith('agent_') or '__' in key:
+            label = key.split('__')[-1] if '__' in key else key.replace('_', ' ').title()
+            md += f"## {label}\n\n{val}\n\n---\n\n"
+            step_num += 1
+
+    md += f"## Sentez\n\n{s.get('sentez', '')}\n\n---\n\n"
+    md += f"## Nihai Karar\n\n{s.get('muhurlu_karar', '')}\n"
 
     from fastapi.responses import Response
+    # UTF-8 BOM ile encode — Windows'ta Türkçe karakterler düzgün görünsün
+    content_bytes = ('\ufeff' + md).encode('utf-8')
+    konu_slug = s.get('konu', 'oturum')[:50].replace(' ', '_')
     return Response(
-        content=md,
+        content=content_bytes,
         media_type="text/markdown; charset=utf-8",
-        headers={"Content-Disposition": f"attachment; filename=avaria_oturum_{session_id}.md"}
+        headers={"Content-Disposition": f"attachment; filename=avaria_{konu_slug}.md"}
     )
 
 
@@ -548,6 +561,14 @@ async def start_debate(req: DebateRequest):
             llm_c = create_llm(req.court_model, temp=0.0)
 
             # Şablonda use_tools: true ise ajanlar tool kullanabilir
+            # Tool desteklemeyen modellerde (gemma2 vb.) otomatik devre dışı bırak
+            _NO_TOOL_MODELS = {"gemma2", "gemma", "phi", "nomic-embed", "qwen2.5"}
+            if use_tools:
+                model_base = configs[0].model.split(":")[0].lower()
+                if any(nt in model_base for nt in _NO_TOOL_MODELS):
+                    use_tools = False
+                    q.put({"type": "log", "message": f"'{configs[0].model}' tool desteklemiyor — tool'lar devre dışı. Tool için llama3.1 veya codestral kullanın."})
+
             expert_tools = AGENT_TOOLS if use_tools else []
             agent1 = create_expert_agent(configs[0].data, llm1, configs[0].personality, tools=expert_tools)
             agent2 = create_expert_agent(configs[1].data, llm2, configs[1].personality, tools=expert_tools)

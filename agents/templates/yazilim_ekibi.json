@@ -4,7 +4,7 @@
   "description": "Yazılım projesi planlama, kod inceleme ve teknik karar verme. PM, Senior Dev, QA ve Code Reviewer rolleri.",
   "icon": "code",
   "trigger_keywords": ["kod", "yazılım", "geliştir", "program", "uygulama", "api", "backend", "frontend", "bug", "hata", "proje", "mimari", "database", "deploy", "test"],
-  "use_tools": true,
+  "use_tools": false,
   "agent_count": 3,
   "flow": ["tasarim", "uygulama", "test_review", "hakem", "sentez", "nihai_karar"],
   "roles": [
